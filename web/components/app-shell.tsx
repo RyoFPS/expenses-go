@@ -100,12 +100,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={open}
+                  aria-label="Catat tunai"
                   tooltip="Catat tunai"
                   size="lg"
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                  className="bg-primary text-primary-foreground group-data-[collapsible=icon]:justify-center hover:bg-primary/90 hover:text-primary-foreground"
                 >
                   <PlusIcon weight="bold" className="size-5" />
-                  <span>Catat tunai</span>
+                  <span className="group-data-[collapsible=icon]:hidden">Catat tunai</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
