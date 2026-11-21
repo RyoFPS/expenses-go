@@ -29,7 +29,9 @@ Dokumentasi API interaktif: http://127.0.0.1:8000/docs
 ## Ingest notifikasi (M1)
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/ingest/notification   -H "X-API-Key: $API_KEY" -H "Content-Type: application/json"   -d '{"package_name":"com.example.bank","title":"...","text":"...","posted_at":1763700000123}'
+curl -X POST http://127.0.0.1:8000/api/v1/ingest/notification \
+  -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
+  -d '{"package_name":"com.example.bank","title":"...","text":"...","posted_at":1763700000123}'
 ```
 
 - `202 {"status":"accepted","raw_id":"..."}`: baru disimpan.
