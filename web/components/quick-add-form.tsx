@@ -11,6 +11,7 @@ import { z } from "zod"
 
 import { OptionSelect } from "@/components/option-select"
 import { pickDefaultAccount } from "@/components/quick-add-default"
+import { DateTimePicker } from "@/components/date-time-picker"
 import { Button } from "@/components/ui/button"
 import { DrawerDescription, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
@@ -27,7 +28,7 @@ const schema = z.object({
   accountId: z.string().min(1, "Pilih akun"),
   categoryId: z.string(),
   note: z.string().max(1000),
-  occurredAt: z.string(), // "" = sekarang
+  occurredAt: z.string().refine((v) => !v || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v), "Isi jam"), // "" = sekarang
 })
 type FormValues = z.infer<typeof schema>
 
@@ -227,10 +228,17 @@ export default function QuickAddForm({ onDone }: { onDone: () => void }) {
       </div>
 
       {showTime ? (
-        <Field>
-          <FieldLabel htmlFor="qa-time">Waktu (WIB)</FieldLabel>
-          <Input id="qa-time" type="datetime-local" className="h-10" {...form.register("occurredAt")} />
-        </Field>
+        <Controller
+          control={form.control}
+          name="occurredAt"
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid || undefined}>
+              <FieldLabel htmlFor="qa-time">Waktu (WIB)</FieldLabel>
+              <DateTimePicker id="qa-time" value={field.value} onChange={field.onChange} invalid={fieldState.invalid} />
+              <FieldError errors={[fieldState.error]} />
+            </Field>
+          )}
+        />
       ) : (
         <button
           type="button"

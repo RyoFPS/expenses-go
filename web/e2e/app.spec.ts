@@ -87,6 +87,39 @@ test("tambah cepat: validasi nominal kosong", async ({ page }) => {
   await expect(page.getByText("Isi nominal lebih dari 0")).toBeVisible()
 })
 
+test("tanggal dan jam WIB bisa dipilih dan diubah", async ({ page }, info) => {
+  const amount = info.project.name === "desktop" ? 34_567 : 45_678
+  await page.goto("/")
+  await quickAddButton(page).click()
+  await page.getByLabel("Nominal").fill(String(amount))
+  await page.getByRole("button", { name: /Sekarang · ubah waktu/ }).click()
+  await page.getByLabel("Jam (WIB)").fill("23:30")
+  await page.getByLabel("Waktu (WIB)").click()
+  await expectNoHorizontalScroll(page)
+  const day = page.locator('[data-slot="calendar"] button[data-day]').filter({ hasText: /^15$/ })
+  const [d, m, y] = (await day.getAttribute("data-day"))!.split("/")
+  await day.click()
+  await page.getByRole("button", { name: /^Simpan/ }).click()
+  await expect(page.getByText(new RegExp(`Pengeluaran Rp.${digits(amount)} tersimpan`))).toBeVisible()
+
+  const created = (await api.get<Page_<Tx & { occurred_at: string }>>(`/transactions?type=expense&page_size=100`)).items.find(
+    (tx) => tx.amount === amount
+  )!
+  expect(new Date(created.occurred_at).toISOString()).toBe(new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}T23:30:00+07:00`).toISOString())
+
+  await page.goto(`/transaksi/${created.id}`)
+  await expect(page.getByLabel("Jam (WIB)")).toHaveValue("23:30")
+  await page.getByLabel("Jam (WIB)").fill("00:30")
+  await page.getByLabel("Waktu (WIB)").click()
+  await page.locator('[data-slot="calendar"] button[data-day]').filter({ hasText: /^16$/ }).click()
+  await expect(page.getByLabel("Jam (WIB)")).toHaveValue("00:30")
+  await page.getByRole("button", { name: "Simpan perubahan" }).click()
+  await expect(page.getByText("Perubahan disimpan")).toBeVisible()
+  const updated = await api.get<{ occurred_at: string }>(`/transactions/${created.id}`)
+  expect(new Date(updated.occurred_at).toISOString()).toBe(new Date(`${y}-${m.padStart(2, "0")}-16T00:30:00+07:00`).toISOString())
+  await expectNoHorizontalScroll(page)
+})
+
 test("transaksi: cari & filter", async ({ page }) => {
   await page.goto("/transaksi")
   await page.getByRole("searchbox", { name: "Cari merchant atau catatan" }).fill("kopi")

@@ -94,7 +94,7 @@ export function monthEnd(ym: string): string {
   return addDays(`${addMonths(ym, 1)}-01`, -1)
 }
 
-/** Nilai untuk <input type="datetime-local"> di zona Jakarta (WIB = UTC+7, tanpa DST). */
+/** Nilai formulir tanggal dan jam di zona Jakarta (WIB = UTC+7, tanpa DST). */
 export function toJakartaLocalInput(iso: string): string {
   const d = new Date(new Date(iso).getTime() + 7 * 3600_000)
   return d.toISOString().slice(0, 16)

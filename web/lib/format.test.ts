@@ -69,7 +69,7 @@ describe("waktu WIB", () => {
     expect(jakartaDate(d)).toBe("2026-12-01")
     expect(jakartaMonth(d)).toBe("2026-12")
   })
-  it("datetime-local <-> ISO dalam WIB", () => {
+  it("nilai formulir tanggal dan jam <-> ISO dalam WIB", () => {
     expect(toJakartaLocalInput("2026-11-21T12:30:00Z")).toBe("2026-11-21T19:30")
     expect(fromJakartaLocalInput("2026-11-21T19:30")).toBe("2026-11-21T12:30:00.000Z")
     expect(fromJakartaLocalInput(toJakartaLocalInput("2026-01-01T00:00:00Z"))).toBe("2026-01-01T00:00:00.000Z")

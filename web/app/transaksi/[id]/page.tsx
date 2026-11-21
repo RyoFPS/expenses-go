@@ -12,6 +12,7 @@ import { z } from "zod"
 import { ErrorNote, ListSkeleton, useLookups } from "@/components/common"
 import { Money } from "@/components/money"
 import { OptionSelect } from "@/components/option-select"
+import { DateTimePicker } from "@/components/date-time-picker"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,7 +67,7 @@ const schema = z
     categoryId: z.string(),
     merchant: z.string().max(255),
     note: z.string().max(1000),
-    occurredAt: z.string().min(1, "Isi waktu"),
+    occurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Isi tanggal dan jam"),
   })
   .superRefine((v, ctx) => {
     if (v.type === "transfer") {
@@ -170,10 +171,17 @@ function Detail({ tx }: { tx: TransactionDetail }) {
                   </Field>
                 )}
               />
-              <Field>
-                <FieldLabel htmlFor="d-time">Waktu (WIB)</FieldLabel>
-                <Input id="d-time" type="datetime-local" className="h-10" {...form.register("occurredAt")} />
-              </Field>
+              <Controller
+                control={form.control}
+                name="occurredAt"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid || undefined}>
+                    <FieldLabel htmlFor="d-time">Waktu (WIB)</FieldLabel>
+                    <DateTimePicker id="d-time" value={field.value} onChange={field.onChange} invalid={fieldState.invalid} />
+                    <FieldError errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Controller
