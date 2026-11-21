@@ -194,3 +194,47 @@ Naik ke AGP yang mendukung API 37 bisa dilakukan nanti bersamaan dengan Compose 
 ### D-031: Build debug untuk pengujian
 Build debug (`applicationId` `.debug`) mengizinkan HTTP (server lokal) dan punya `DebugConfigReceiver` untuk
 konfigurasi via adb pada uji otomatis di emulator. Build release hanya HTTPS dan tanpa receiver tersebut.
+
+## M5
+
+### D-032: Inisialisasi & stack web
+- Dibuat dengan `npx shadcn@latest init --preset b39iRcInT --template next` sesuai permintaan pengguna:
+  Next.js 16.4 (App Router, Turbopack), shadcn/ui style `base-rhea` di atas **Base UI** (bukan Radix), ikon Phosphor,
+  font Inter. Pustaka PRD: TanStack Query v5, **TanStack Table v9** (API `useTable`/`tableFeatures`), React Hook Form, Zod 4, Recharts.
+- `@types/node` dinaikkan ke 24 (template `^20` bentrok dengan peer Vitest 5; runtime & image Docker memakai Node 24).
+- Nama tampilan aplikasi: "Dompet".
+
+### D-033: Arsitektur data web
+- Browser hanya memanggil origin dashboard (`/api/v1/*`); Next.js me-*rewrite* ke FastAPI (`API_INTERNAL_URL`,
+  dievaluasi saat build). Satu domain → satu login Cloudflare Access, tanpa CORS. Header `Cf-Access-Jwt-Assertion`
+  yang ditambahkan Cloudflare ikut diteruskan.
+- Halaman = client component + TanStack Query. Setiap mutasi meng-*invalidate* transaksi, akun (saldo), laporan, dan raw.
+- Beranda me-render total saldo, akun, dan jumlah "perlu dicek" **di server** (`lib/server-api.ts`, meneruskan
+  `Cf-Access-Jwt-Assertion` milik pengguna; backend tetap memvalidasi). Gagal → data dimuat di browser seperti biasa.
+- Filter tanggal & tampilan waktu selalu Asia/Jakarta. Uang selalu integer; format `Rp 1.500.000` dengan spasi tak-putus
+  dan minus Unicode (`−Rp 25.000`) agar tidak pernah terpotong baris.
+
+### D-034: UX
+- Mobile-first: navigasi bawah (Beranda, Transaksi, tombol +, Review, Lainnya) + sidebar di desktop.
+- **Tambah cepat (tunai) = 3 langkah**: tombol + → ketik nominal (input sudah fokus, keyboard numerik) → Simpan.
+  Default: pengeluaran, akun terakhir dipakai → akun tunai, waktu sekarang; kategori & catatan opsional.
+- Warna konsisten: token `--income` (hijau), `--expense` (merah), `--transfer` (biru) untuk light & dark, kontras ≥ 4.5:1.
+- Transaksi: tabel (TanStack Table) dengan edit kategori inline di desktop; daftar kartu di mobile, edit lewat halaman detail.
+- Hapus kategori memakai `window.confirm` (sederhana); hapus transaksi memakai AlertDialog.
+
+### D-035: Performa
+- Form tambah cepat (zod + react-hook-form) & Drawer dimuat lazy dan di-prefetch saat browser idle.
+- `sonner` dimuat lazy (`lib/toast.ts`); Recharts hanya di halaman Laporan dan baru dimuat saat grafik terlihat.
+  Beranda memakai grafik batang SVG ringan (`components/charts/mini-cashflow.tsx`).
+- Menu "Lainnya" mobile memakai disclosure ringan, bukan DropdownMenu (Base UI Menu + floating-ui ±50 KB).
+- Link konten di Beranda & baris transaksi `prefetch={false}` (11 prefetch RSC sekaligus membebani HP).
+- Badge "perlu dicek" di navigasi baru tampil setelah hidrasi (mencegah hydration mismatch karena berbagi cache query
+  dengan data awal server).
+
+### D-036: Lighthouse (AC M5) — belum konsisten ≥ 90 di lingkungan lokal
+Diukur dengan Lighthouse 12 mode mobile default (simulasi 4× CPU, ~1,6 Mbps) via Microsoft Edge terhadap build
+produksi standalone di `localhost` (HTTP/1.1, gzip). Hasil 5 run terakhir: **Performance median 86 (78–87;
+pernah 91), Accessibility 100, Best Practices 100**, CLS 0, FCP ~0,9–1,1 s, TBT 220–480 ms, LCP simulasi ~3,4 s.
+LCP terobservasi ~0,5 s (sama dengan FCP; angka total saldo ada di HTML server). Sisa skor dibatasi oleh
+JS framework (React + Next ±200 KB gzip) yang dihitung model simulasi Lighthouse sebagai dependensi LCP, plus noise CPU
+mesin lokal pada TBT. Produksi di belakang Cloudflare (HTTP/2/3, Brotli) belum diukur (M6).

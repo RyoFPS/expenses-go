@@ -2,13 +2,13 @@
 
 Pencatat keuangan pribadi self-hosted dengan auto-capture dari notifikasi Android. Spesifikasi lengkap: [PRD.md](PRD.md). Keputusan desain: [docs/DECISIONS.md](docs/DECISIONS.md).
 
-Status: **M0**–**M4** selesai (fondasi, ingest, parser & transaksi, API inti, listener Android).
+Status: **M0**–**M4** selesai; **M5** (web dashboard) selesai kecuali target Lighthouse Performance ≥ 90 (lihat `docs/DECISIONS.md` D-036).
 
 ## Struktur
 
 ```
 backend/    FastAPI (Python 3.12), SQLAlchemy async, Alembic, pytest
-web/        Next.js dashboard (M5)
+web/        Next.js dashboard (M5) — lihat web/README.md
 android/    Listener app Kotlin (M4)
 docs/       Dokumentasi & keputusan
 ```
@@ -19,10 +19,12 @@ Prasyarat: Docker + Docker Compose. `make` opsional (perintah setara tertulis di
 
 ```bash
 cp .env.example .env          # lalu ganti POSTGRES_PASSWORD dan API_KEY
-make up                       # docker compose up -d --build --wait
+make up                       # docker compose up -d --build --wait  (db, api, web)
 make migrate                  # docker compose run --rm api alembic upgrade head
 curl http://127.0.0.1:8000/healthz   # {"status":"ok"}
 ```
+
+Dashboard: http://127.0.0.1:3000 (pengembangan web: lihat [web/README.md](web/README.md)).
 
 Dokumentasi API interaktif: http://127.0.0.1:8000/docs
 
