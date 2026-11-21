@@ -7,10 +7,25 @@ import asyncpg
 import pytest
 from sqlalchemy.engine import make_url
 
-os.environ.setdefault("ENV", "dev")
-os.environ.setdefault("API_KEY", "test-api-key")
+TEST_API_KEY = "test-api-key"
 
+os.environ["ENV"] = "dev"
+# Paksa key yang diketahui test (menimpa API_KEY asli dari environment container).
+os.environ["API_KEY"] = TEST_API_KEY
+
+from collections.abc import AsyncIterator  # noqa: E402
+
+import httpx  # noqa: E402
+from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
+from sqlalchemy import text  # noqa: E402
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine  # noqa: E402
+
+from app.core.config import get_settings  # noqa: E402
+from app.core.db import get_session  # noqa: E402
+from app.main import app  # noqa: E402
+
+get_settings.cache_clear()
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -62,3 +77,37 @@ def alembic_config(test_db_url: str) -> Config:
     cfg.set_main_option("sqlalchemy.url", test_db_url.replace("%", "%%"))
     cfg.attributes["configure_logger"] = False
     return cfg
+
+
+@pytest.fixture(scope="session")
+def migrated_db(alembic_config: Config, test_db_url: str) -> str:
+    command.upgrade(alembic_config, "head")
+    return test_db_url
+
+
+@pytest.fixture
+async def db_sessionmaker(migrated_db: str) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    """Sessionmaker ke DB test; tabel dikosongkan sebelum tiap test."""
+    engine = create_async_engine(migrated_db)
+    async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "TRUNCATE transactions, balance_snapshots, category_rules, categories, "
+                "accounts, raw_notifications RESTART IDENTITY CASCADE"
+            )
+        )
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()
+
+
+@pytest.fixture
+async def client(db_sessionmaker: async_sessionmaker[AsyncSession]) -> AsyncIterator[httpx.AsyncClient]:
+    async def _session() -> AsyncIterator[AsyncSession]:
+        async with db_sessionmaker() as s:
+            yield s
+
+    app.dependency_overrides[get_session] = _session
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
+    app.dependency_overrides.clear()

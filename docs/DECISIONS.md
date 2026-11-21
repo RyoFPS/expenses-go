@@ -40,3 +40,33 @@ sehingga data dev tidak tersentuh.
 ### D-008: Port API hanya di localhost
 `api` di-publish ke `127.0.0.1:8000` untuk akses lokal/dev. Tidak ada port publik;
 akses dari luar nanti lewat `cloudflared` (M6). PostgreSQL tidak di-publish sama sekali.
+
+## M1
+
+### D-009: `content_hash` memakai separator
+`sha256(package_name ␟ title ␟ text ␟ posted_at_ms)` dengan separator ASCII `\x1f`.
+Tanpa separator, `title="ab", text="c"` dan `title="a", text="bc"` menghasilkan hash yang sama.
+`posted_at` di-hash sebagai integer epoch ms persis seperti dikirim Android.
+
+### D-010: Idempotensi via `INSERT ... ON CONFLICT DO NOTHING`
+Aman untuk kiriman paralel (mis. WorkManager retry bersamaan): hanya satu baris tersimpan,
+request lain mendapat `duplicate`. Respons duplikat single = `200 {"status":"duplicate"}` sesuai PRD.
+
+### D-011: Respons batch
+`POST /ingest/notification/batch` selalu `200` dengan
+`{"accepted": n, "duplicate": m, "results": [{"status", "raw_id"}...]}` berurutan sesuai request,
+agar Android bisa menandai tiap item outbox. Batch 1–100 item; satu item tidak valid → seluruh batch `422`
+(tidak ada yang disimpan). Item kembar di dalam satu batch: yang pertama `accepted`, sisanya `duplicate`.
+
+### D-012: Validasi payload ingest
+- Field tambahan ditolak (`extra=forbid`); tipe ketat (`posted_at` harus integer JSON, bukan string/float/bool).
+- `posted_at` harus epoch **milidetik** ≥ tahun 2000 (menangkap salah satuan detik) dan ≤ sekarang + 1 hari.
+- `package_name` 1–255 karakter `[A-Za-z0-9_.]`; `title` boleh kosong (≤1000); `text` 1–10.000 karakter.
+- Teks tidak di-strip/dimodifikasi.
+
+### D-013: Status raw setelah ingest = `pending`
+Parser belum ada di M1, jadi raw disimpan `pending`. M2 akan menjalankan parser setelah simpan
+dan memproses raw `pending` yang sudah ada.
+
+### D-014: Rate limit ingest diserahkan ke Cloudflare WAF
+`slowapi` (opsional di PRD) tidak ditambahkan; rate limit dikonfigurasi di Cloudflare pada M6.
