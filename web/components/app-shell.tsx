@@ -17,6 +17,18 @@ import * as React from "react"
 import { useQuickAdd } from "@/components/quick-add"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { useNeedsReviewCount } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 
@@ -30,13 +42,19 @@ const NAV = [
 ] as const
 
 function isActive(pathname: string, href: string) {
-  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
+  return href === "/"
+    ? pathname === "/"
+    : pathname === href || pathname.startsWith(`${href}/`)
 }
 
 const noopSubscribe = () => () => {}
 /** false saat SSR & render hidrasi pertama, true setelahnya — tanpa setState di effect. */
 function useHydrated() {
-  return React.useSyncExternalStore(noopSubscribe, () => true, () => false)
+  return React.useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  )
 }
 
 function ReviewBadge({ className }: { className?: string }) {
@@ -63,82 +81,128 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { open } = useQuickAdd()
 
   return (
-    <div className="min-h-svh md:grid md:grid-cols-[15rem_1fr]">
-      {/* Sidebar desktop */}
-      <aside className="sticky top-0 hidden h-svh flex-col gap-1 border-r bg-sidebar p-4 md:flex">
-        <Link href="/" className="mb-6 flex items-center gap-2 px-2 text-lg font-semibold tracking-tight">
-          <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <WalletIcon weight="bold" className="size-4" />
-          </span>
-          Dompet
-        </Link>
-        <Button size="lg" className="mb-4 w-full" onClick={open}>
-          <PlusIcon weight="bold" data-icon="inline-start" />
-          Catat tunai
-        </Button>
-        <nav aria-label="Navigasi utama" className="flex flex-col gap-1">
-          {NAV.map(({ href, label, icon: Icon }) => {
-            const active = isActive(pathname, href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors",
-                  active ? "bg-sidebar-accent font-medium text-foreground" : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
-                )}
-              >
-                <Icon weight={active ? "fill" : "regular"} className="size-5" />
-                <span className="flex-1">{label}</span>
-                {href === "/review" && <ReviewBadge />}
-              </Link>
-            )
-          })}
-        </nav>
-        <div className="mt-auto">
-          <ThemeToggle />
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-col">
-        {/* Header mobile */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background px-4 py-2 md:hidden">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <WalletIcon weight="bold" className="size-4" />
-            </span>
-            Dompet
-          </Link>
-          <ThemeToggle compact />
-        </header>
-
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12">{children}</main>
-      </div>
-
-      {/* Navigasi bawah mobile */}
-      <nav
-        aria-label="Navigasi utama"
-        className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-background md:hidden"
-      >
-        <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2">
-          {NAV.slice(0, 2).map((item) => (
-            <BottomLink key={item.href} {...item} active={isActive(pathname, item.href)} />
-          ))}
-          <div className="flex justify-center">
-            <Button
-              onClick={open}
-              aria-label="Catat transaksi tunai"
-              className="-mt-6 size-14 rounded-full shadow-lg [&_svg:not([class*='size-'])]:size-6"
+    <TooltipProvider>
+      <SidebarProvider>
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <Link
+              href="/"
+              className="flex items-center gap-2 px-2 py-2 text-lg font-semibold tracking-tight group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
             >
-              <PlusIcon weight="bold" />
-            </Button>
+              <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+                <WalletIcon weight="bold" className="size-4" />
+              </span>
+              <span className="group-data-[collapsible=icon]:hidden">
+                Dompet
+              </span>
+            </Link>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={open}
+                  tooltip="Catat tunai"
+                  size="lg"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+                >
+                  <PlusIcon weight="bold" className="size-5" />
+                  <span>Catat tunai</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent>
+            <nav aria-label="Navigasi utama">
+              <SidebarMenu>
+                {NAV.map(({ href, label, icon: Icon }) => {
+                  const active = isActive(pathname, href)
+                  return (
+                    <SidebarMenuItem key={href}>
+                      <SidebarMenuButton
+                        render={<Link href={href} />}
+                        isActive={active}
+                        tooltip={label}
+                        aria-current={active ? "page" : undefined}
+                      >
+                        <Icon
+                          weight={active ? "fill" : "regular"}
+                          className="size-5"
+                        />
+                        <span>{label}</span>
+                        {href === "/review" && (
+                          <ReviewBadge className="ml-auto group-data-[collapsible=icon]:hidden" />
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </nav>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="group-data-[collapsible=icon]:hidden">
+              <ThemeToggle />
+            </div>
+            <div className="hidden group-data-[collapsible=icon]:block">
+              <ThemeToggle compact />
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="hidden border-b px-4 py-2 md:block">
+            <SidebarTrigger />
           </div>
-          <BottomLink {...NAV[2]} active={isActive(pathname, NAV[2].href)} badge />
-          <MoreMenu pathname={pathname} />
+          {/* Header mobile */}
+          <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background px-4 py-2 md:hidden">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-semibold tracking-tight"
+            >
+              <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
+                <WalletIcon weight="bold" className="size-4" />
+              </span>
+              Dompet
+            </Link>
+            <ThemeToggle compact />
+          </header>
+
+          <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-4 pb-28 md:px-8 md:pt-8 md:pb-12">
+            {children}
+          </main>
         </div>
-      </nav>
-    </div>
+
+        {/* Navigasi bawah mobile */}
+        <nav
+          aria-label="Navigasi utama"
+          className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t bg-background md:hidden"
+        >
+          <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2">
+            {NAV.slice(0, 2).map((item) => (
+              <BottomLink
+                key={item.href}
+                {...item}
+                active={isActive(pathname, item.href)}
+              />
+            ))}
+            <div className="flex justify-center">
+              <Button
+                onClick={open}
+                aria-label="Catat transaksi tunai"
+                className="-mt-6 size-14 rounded-full shadow-lg [&_svg:not([class*='size-'])]:size-6"
+              >
+                <PlusIcon weight="bold" />
+              </Button>
+            </div>
+            <BottomLink
+              {...NAV[2]}
+              active={isActive(pathname, NAV[2].href)}
+              badge
+            />
+            <MoreMenu pathname={pathname} />
+          </div>
+        </nav>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
 
@@ -199,10 +263,15 @@ function MoreMenu({ pathname }: { pathname: string }) {
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex flex-col items-center gap-0.5 py-2 text-[11px] outline-none focus-visible:ring-3 focus-visible:ring-ring/30",
-          active || open ? "font-medium text-foreground" : "text-muted-foreground"
+          active || open
+            ? "font-medium text-foreground"
+            : "text-muted-foreground"
         )}
       >
-        <DotsThreeCircleIcon weight={active ? "fill" : "regular"} className="size-6" />
+        <DotsThreeCircleIcon
+          weight={active ? "fill" : "regular"}
+          className="size-6"
+        />
         Lainnya
       </button>
       {open && (
