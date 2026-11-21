@@ -272,3 +272,12 @@ PRD §6 menyebut APScheduler untuk background job, tetapi tidak ada pekerjaan te
 parsing & transfer matcher berjalan sinkron setelah setiap ingest (PRD §10), reparse dipicu lewat endpoint, dan backup
 harian berjalan di container `backup` (cron). Menambah scheduler in-process hanya menambah dependensi dan risiko job ganda
 jika API dijalankan lebih dari satu proses. Tambahkan bila nanti ada kebutuhan nyata (mis. notifikasi Fase 2).
+
+### D-042: Pembatalan pengeluaran myBCA
+Data asli produksi (21 Nov 2026) memperlihatkan notifikasi "Catatan Finansial":
+`Pengeluaran sebesar IDR 10.00 di kategori Pendidikan yang dilakukan tanggal 21 November 2026 dibatalkan.`
+(QRIS gagal karena merchant tidak ditemukan; uang tidak terpotong). Dicatat sebagai **pemasukan** bernominal sama dengan
+`note` "Pembatalan pengeluaran <kategori> tanggal <tgl>", tanpa kategori — saldo kembali benar dan riwayat utuh.
+Tidak menghapus pengeluaran asli karena raw tanpa transaksi akan dibuat ulang oleh reparse (D-019).
+Varian "dibatalkan" lain yang belum pernah terlihat → `ParseError` (direview). `ParsedTransaction` mendapat field
+opsional `note`.

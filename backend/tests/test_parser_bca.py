@@ -35,6 +35,7 @@ def test_fixture_parsed_as_expected(case: dict) -> None:
     assert result.amount == exp["amount"]
     assert result.merchant == exp["merchant"]
     assert result.category_hint == exp["category_hint"]
+    assert result.note == exp.get("note")
     assert result.occurred_at is None  # tidak ada waktu di teks -> pakai posted_at
     assert result.balance_after is None
     assert result.confidence >= 0.8
@@ -68,3 +69,19 @@ def test_inexact_amount_needs_review() -> None:
     assert result is not None
     assert result.amount == 1001
     assert result.confidence < 0.8
+
+
+def test_cancelled_expense_variants_unknown_raise() -> None:
+    # Hanya pola pembatalan yang pernah terlihat yang diterima; varian lain direview manual.
+    for text in [
+        "Pemasukan sebesar IDR 10.00 di kategori Pendidikan yang dilakukan tanggal 21 November 2026 dibatalkan.",
+        "Pengeluaran sebesar IDR 10.00 di kategori Pendidikan dibatalkan.",
+    ]:
+        with pytest.raises(ParseError):
+            parser.parse("Catatan Finansial", text)
+
+
+def test_cancellation_category_not_swallowed_by_expense_pattern() -> None:
+    text = "Pengeluaran sebesar IDR 10.00 di kategori Pendidikan yang dilakukan tanggal 21 November 2026 dibatalkan."
+    result = parser.parse("Catatan Finansial", text)
+    assert result is not None and result.type == "income" and result.category_hint is None

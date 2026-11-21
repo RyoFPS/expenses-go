@@ -1,37 +1,96 @@
 {
   "source": "myBCA",
   "package_name": "com.bca.mybca.omni.android",
-  "provenance": "Notifikasi asli dari HP pengguna, ditranskripsi dari screenshot pada 2026-11-21. Spasi/baris baru di teks asli (EXTRA_TEXT) mungkin sedikit berbeda karena teks di layar terbungkus (wrap). package_name dikonfirmasi pengguna.",
+  "provenance": "Notifikasi asli dari HP pengguna, ditranskripsi dari screenshot pada 2026-11-21. Spasi/baris baru di teks asli (EXTRA_TEXT) mungkin sedikit berbeda karena teks di layar terbungkus (wrap). package_name dikonfirmasi pengguna. Kasus bca_real_* diambil dari raw_notifications produksi (HP pengguna) pada 2026-11-21: pengeluaran QRIS Rp10 yang dibatalkan karena merchant tidak ditemukan (uang tidak terpotong), lalu pengeluaran Rp10 yang berhasil.",
   "cases": [
     {
       "id": "bca_expense_tagihan_rutin",
       "title": "Catatan Finansial",
       "text": "Pengeluaran sebesar IDR 1,000.00 di kategori Tagihan Rutin.",
-      "expected": {"type": "expense", "amount": 1000, "merchant": null, "category_hint": "Tagihan Rutin"}
+      "expected": {
+        "type": "expense",
+        "amount": 1000,
+        "merchant": null,
+        "category_hint": "Tagihan Rutin"
+      }
     },
     {
       "id": "bca_income_transfer_rekening",
       "title": "Catatan Finansial",
       "text": "Pemasukan sebesar IDR 73,000.00 dari INTI**RI ****SIH A di kategori Transfer Rekening.",
-      "expected": {"type": "income", "amount": 73000, "merchant": "INTI**RI ****SIH A", "category_hint": "Transfer Rekening"}
+      "expected": {
+        "type": "income",
+        "amount": 73000,
+        "merchant": "INTI**RI ****SIH A",
+        "category_hint": "Transfer Rekening"
+      }
     },
     {
       "id": "bca_expense_pembayaran",
       "title": "Catatan Finansial",
       "text": "Pengeluaran sebesar IDR 52,760.00 di kategori Pembayaran.",
-      "expected": {"type": "expense", "amount": 52760, "merchant": null, "category_hint": "Pembayaran"}
+      "expected": {
+        "type": "expense",
+        "amount": 52760,
+        "merchant": null,
+        "category_hint": "Pembayaran"
+      }
     },
     {
       "id": "bca_expense_makanan_77k",
       "title": "Catatan Finansial",
       "text": "Pengeluaran sebesar IDR 77,000.00 di kategori Makanan.",
-      "expected": {"type": "expense", "amount": 77000, "merchant": null, "category_hint": "Makanan"}
+      "expected": {
+        "type": "expense",
+        "amount": 77000,
+        "merchant": null,
+        "category_hint": "Makanan"
+      }
     },
     {
       "id": "bca_expense_makanan_10k",
       "title": "Catatan Finansial",
       "text": "Pengeluaran sebesar IDR 10,000.00 di kategori Makanan.",
-      "expected": {"type": "expense", "amount": 10000, "merchant": null, "category_hint": "Makanan"}
+      "expected": {
+        "type": "expense",
+        "amount": 10000,
+        "merchant": null,
+        "category_hint": "Makanan"
+      }
+    },
+    {
+      "id": "bca_real_expense_small_amount",
+      "title": "Catatan Finansial",
+      "text": "Pengeluaran sebesar IDR 10.00 di kategori Pendidikan.",
+      "expected": {
+        "type": "expense",
+        "amount": 10,
+        "merchant": null,
+        "category_hint": "Pendidikan"
+      }
+    },
+    {
+      "id": "bca_real_expense_cancelled",
+      "title": "Catatan Finansial",
+      "text": "Pengeluaran sebesar IDR 10.00 di kategori Pendidikan yang dilakukan tanggal 21 November 2026 dibatalkan.",
+      "expected": {
+        "type": "income",
+        "amount": 10,
+        "merchant": null,
+        "category_hint": null,
+        "note": "Pembatalan pengeluaran Pendidikan tanggal 21 November 2026"
+      }
+    },
+    {
+      "id": "bca_real_expense_tagihan",
+      "title": "Catatan Finansial",
+      "text": "Pengeluaran sebesar IDR 10.00 di kategori Tagihan Rutin.",
+      "expected": {
+        "type": "expense",
+        "amount": 10,
+        "merchant": null,
+        "category_hint": "Tagihan Rutin"
+      }
     }
   ]
 }

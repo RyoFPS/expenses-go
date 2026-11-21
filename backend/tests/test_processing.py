@@ -370,3 +370,32 @@ async def test_parser_transfer_to_external_becomes_expense(client, db_sessionmak
     await post(client, notif(dummy("transfer", 5_000, counterpart="Orang Lain")))
     [tx] = await all_tx(db_sessionmaker)
     assert (tx.type, tx.to_account_id) == (TransactionType.expense, None)
+
+
+async def test_bca_real_cancellation_sequence_keeps_balance_correct(client, db_sessionmaker, accounts) -> None:
+    """Urutan asli 21 Nov 2026: QRIS Rp10 dibatalkan (2 detik kemudian), lalu QRIS Rp10 berhasil."""
+    pkg = BCA["package_name"]
+    t = T0 + timedelta(seconds=18)
+    await post(client, notif("Pengeluaran sebesar IDR 10.00 di kategori Pendidikan.", pkg=pkg, title="Catatan Finansial", at=t))
+    await post(
+        client,
+        notif(
+            "Pengeluaran sebesar IDR 10.00 di kategori Pendidikan yang dilakukan tanggal 21 November 2026 dibatalkan.",
+            pkg=pkg, title="Catatan Finansial", at=t + timedelta(seconds=2),
+        ),
+    )
+    await post(client, notif("Pengeluaran sebesar IDR 10.00 di kategori Tagihan Rutin.", pkg=pkg, title="Catatan Finansial", at=t + timedelta(minutes=1)))
+
+    txs = await all_tx(db_sessionmaker)
+    assert [(x.type.value, x.amount) for x in txs] == [("expense", 10), ("income", 10), ("expense", 10)]
+    refund = txs[1]
+    assert refund.note == "Pembatalan pengeluaran Pendidikan tanggal 21 November 2026"
+    assert refund.category_id is None
+    # Saldo BCA: hanya pengeluaran yang berhasil yang mengurangi saldo.
+    resp = await client.get(f"/api/v1/accounts/{accounts['bca']}/balance")
+    assert resp.json()["calculated"] == -10
+
+    # Reparse tidak menggandakan
+    async with db_sessionmaker() as s:
+        await reparse_all(s, ParseStatus.parsed)
+    assert len(await all_tx(db_sessionmaker)) == 3

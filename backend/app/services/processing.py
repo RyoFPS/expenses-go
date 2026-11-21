@@ -99,6 +99,7 @@ async def _create_transaction(
         "type": tx_type,
         "amount": parsed.amount,
         "merchant": parsed.merchant,
+        "note": parsed.note,
         "category_id": category_id,
         "occurred_at": occurred_at,
         "source": TransactionSource.notification,

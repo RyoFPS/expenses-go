@@ -13,6 +13,8 @@ class ParsedTransaction(BaseModel):
     counterpart_hint: str | None = None  # mis. nama akun tujuan untuk transfer
     # Tambahan di luar PRD (lihat docs/DECISIONS.md D-016): kategori dari app bank, mis. "Makanan".
     category_hint: str | None = None
+    # Tambahan di luar PRD (D-042): keterangan untuk transaksi, mis. "Pembatalan pengeluaran ...".
+    note: str | None = Field(default=None, max_length=1000)
     confidence: float = Field(ge=0, le=1)
 
 
