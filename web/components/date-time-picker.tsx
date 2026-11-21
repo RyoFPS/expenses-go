@@ -15,7 +15,7 @@ export function DateTimePicker({
   invalid?: boolean
 }) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+    <div className="grid min-w-0 gap-2">
       <DatePicker
         id={id}
         value={value.slice(0, 10)}

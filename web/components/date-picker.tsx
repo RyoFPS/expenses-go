@@ -37,12 +37,14 @@ export function DatePicker({
             type="button"
             variant="outline"
             aria-invalid={invalid}
-            className="h-10 w-full min-w-0 justify-start truncate font-normal"
+            className="h-10 w-full min-w-0 justify-start font-normal"
           />
         }
       >
         <CalendarBlankIcon className="size-4 shrink-0" />
-        {selected ? format(selected, "d MMM yyyy", { locale: idLocale }) : "Pilih tanggal"}
+        <span className="min-w-0 truncate">
+          {selected ? format(selected, "d MMM yyyy", { locale: idLocale }) : "Pilih tanggal"}
+        </span>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] gap-0 overflow-hidden p-0">
         <Calendar
