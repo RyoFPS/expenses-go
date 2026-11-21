@@ -272,6 +272,8 @@ test("mode gelap & manifest PWA", async ({ page, request }) => {
   await expect(page.locator("html")).toHaveClass(/dark/)
 
   const manifest = await (await request.get("/manifest.webmanifest")).json()
+  await expect(page.locator('link[rel="manifest"]')).toHaveCount(1)
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("crossorigin", "use-credentials")
   expect(manifest.display).toBe("standalone")
   for (const icon of manifest.icons) expect((await request.get(icon.src)).status()).toBe(200)
 })

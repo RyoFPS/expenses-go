@@ -31,6 +31,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id" suppressHydrationWarning className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}>
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" crossOrigin="use-credentials" />
+      </head>
       <body>
         <Providers>
           <AppShell>{children}</AppShell>
