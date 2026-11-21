@@ -29,3 +29,6 @@ local.properties
 Thumbs.db
 .idea/
 .vscode/
+
+# graphify output
+graphify-out/
