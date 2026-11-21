@@ -74,13 +74,13 @@ lama diproses lewat `reparse_all(pending)` (endpoint `POST /raw-notifications/re
 ## M2
 
 ### D-015: Hanya parser myBCA; dataset contoh tidak dipakai sebagai fixture
-`docs/notifikasi_bank_ewallet_id.json` (420 contoh, 7 sumber) adalah data sintetis
+Dataset contoh yang sempat diberikan (420 contoh, 7 sumber; sudah dihapus) adalah data sintetis
 (package_name berselang-seling, judul gabungan seperti "DANA Kaget / Transfer Masuk", nama & tanggal seragam,
 tanpa notifikasi non-transaksi). Sesuai PRD §17.4, parser tidak ditulis dari data itu.
 Satu-satunya fixture asli: 5 notifikasi myBCA (`tests/fixtures/bca/`, ditranskripsi dari screenshot).
 Sumber lain menunggu notifikasi asli (paling mudah dikumpulkan dari `raw_notifications` setelah M4);
 raw dari package tanpa parser tersimpan sebagai `ignored` dan bisa di-reparse nanti.
-`package_name` myBCA (`com.bca.mybca.omni.android`) belum diverifikasi dari data listener.
+`package_name` myBCA (`com.bca.mybca.omni.android`) sudah dikonfirmasi pengguna.
 
 ### D-016: `ParsedTransaction.category_hint`
 Tambahan di luar interface PRD. myBCA menyertakan kategori ("Makanan", "Tagihan Rutin") tetapi tidak

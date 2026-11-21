@@ -1,7 +1,7 @@
 {
   "source": "myBCA",
   "package_name": "com.bca.mybca.omni.android",
-  "provenance": "Notifikasi asli dari HP pengguna, ditranskripsi dari screenshot pada 2026-11-21. Spasi/baris baru di teks asli (EXTRA_TEXT) mungkin sedikit berbeda karena teks di layar terbungkus (wrap). package_name belum diverifikasi dari data listener.",
+  "provenance": "Notifikasi asli dari HP pengguna, ditranskripsi dari screenshot pada 2026-11-21. Spasi/baris baru di teks asli (EXTRA_TEXT) mungkin sedikit berbeda karena teks di layar terbungkus (wrap). package_name dikonfirmasi pengguna.",
   "cases": [
     {
       "id": "bca_expense_tagihan_rutin",

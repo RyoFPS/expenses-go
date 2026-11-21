@@ -29,7 +29,6 @@ def _clean(s: str | None) -> str | None:
 
 
 class BcaParser:
-    # TODO: verifikasi package_name dari data raw_notifications asli setelah listener Android jalan.
     package_names = {"com.bca.mybca.omni.android"}
 
     def parse(self, title: str, text: str) -> ParsedTransaction | None:
