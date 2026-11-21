@@ -7,9 +7,9 @@ import { CategoryBars } from "@/components/charts/category-bars"
 import { LazyCashflowChart } from "@/components/charts/lazy"
 import { ErrorNote, ListSkeleton, PageHeader } from "@/components/common"
 import { Money } from "@/components/money"
+import { MonthPicker } from "@/components/month-picker"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { addMonths, formatMonth, jakartaMonth, monthEnd } from "@/lib/format"
 import { useCashflow, useSummary } from "@/lib/queries"
@@ -30,14 +30,7 @@ export default function ReportsPage() {
             <Button variant="outline" size="icon" aria-label="Bulan sebelumnya" onClick={() => setMonth((m) => addMonths(m, -1))}>
               <CaretLeftIcon />
             </Button>
-            <Input
-              type="month"
-              aria-label="Pilih bulan"
-              value={month}
-              max={current}
-              onChange={(e) => e.target.value && setMonth(e.target.value)}
-              className="h-8 min-w-0 flex-1 sm:w-44 sm:flex-none"
-            />
+            <MonthPicker value={month} max={current} onChange={setMonth} />
             <Button
               variant="outline"
               size="icon"

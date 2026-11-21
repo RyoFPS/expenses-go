@@ -8,6 +8,7 @@ import * as React from "react"
 import { toast } from "@/lib/toast"
 
 import { EmptyState, ErrorNote, ListSkeleton, PageHeader, useLookups } from "@/components/common"
+import { DatePicker } from "@/components/date-picker"
 import { Money } from "@/components/money"
 import { OptionSelect } from "@/components/option-select"
 import { TransactionRow, txTitle } from "@/components/transaction-row"
@@ -135,11 +136,11 @@ function Transactions() {
           <div id="tx-filters" className="grid grid-cols-2 gap-3 rounded-3xl bg-muted/50 p-4 md:grid-cols-5">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-from">Dari</Label>
-              <Input id="f-from" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-10" />
+              <DatePicker id="f-from" value={dateFrom} onChange={setDateFrom} clearable />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-to">Sampai</Label>
-              <Input id="f-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-10" />
+              <DatePicker id="f-to" value={dateTo} onChange={setDateTo} clearable />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-account">Akun</Label>
