@@ -62,6 +62,34 @@ Tambahkan **Public hostnames** (urutan penting, yang lebih spesifik di atas):
 
 (`api` dan `web` adalah nama service di jaringan Docker internal; `cloudflared` berada di jaringan yang sama.)
 
+### Varian: server sudah punya tunnel `cloudflared` di host (config lokal)
+
+Jika `cloudflared` sudah berjalan sebagai service systemd dengan `/etc/cloudflared/config.yml` untuk layanan lain,
+tidak perlu tunnel/token baru dan service `cloudflared` di compose **tidak dipakai** (`make up`, bukan `make up-prod`;
+`CLOUDFLARE_TUNNEL_TOKEN` dibiarkan kosong). Port `API_PORT`/`WEB_PORT` di `.env` bisa diganti bila 8000/3000 terpakai
+(tetap hanya di-bind ke `127.0.0.1`).
+
+Tambahkan **sebelum** aturan catch-all `http_status:404` (urutan penting, path `/api/` dulu):
+
+```yaml
+  - hostname: finance.domainmu.com
+    path: ^/api/
+    service: http://127.0.0.1:18000   # API_PORT
+  - hostname: finance.domainmu.com
+    service: http://127.0.0.1:13000   # WEB_PORT
+```
+
+```bash
+sudo cp /etc/cloudflared/config.yml /etc/cloudflared/config.yml.bak.$(date +%Y%m%d-%H%M%S)
+sudo cloudflared tunnel --config /etc/cloudflared/config.yml ingress validate
+sudo systemctl restart cloudflared        # layanan lain di tunnel yang sama terputus beberapa detik
+```
+
+DNS: buat CNAME `finance` → `<TUNNEL_ID>.cfargotunnel.com` (Proxied) di dashboard Cloudflare, atau
+`cloudflared tunnel route dns <TUNNEL_ID> finance.domainmu.com` jika `cert.pem` tersedia.
+
+**Buat aplikasi Access (langkah 4) sebelum membuat DNS/route**, agar hostname tidak pernah terbuka tanpa login.
+
 ## 3. Team domain Access
 
 Zero Trust → **Settings → Custom pages** (atau *Team name and domain*): catat `<tim>.cloudflareaccess.com` →
