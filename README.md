@@ -2,7 +2,7 @@
 
 Pencatat keuangan pribadi self-hosted dengan auto-capture dari notifikasi Android. Spesifikasi lengkap: [PRD.md](PRD.md). Keputusan desain: [docs/DECISIONS.md](docs/DECISIONS.md).
 
-Status: **M0** (fondasi) dan **M1** (ingest notifikasi mentah) selesai.
+Status: **M0** (fondasi), **M1** (ingest notifikasi mentah), dan **M2** (parser & transaksi) selesai.
 
 ## Struktur
 
@@ -38,6 +38,17 @@ curl -X POST http://127.0.0.1:8000/api/v1/ingest/notification \
 - `200 {"status":"duplicate"}`: notifikasi yang sama sudah pernah diterima.
 - `401`: API key salah/tidak ada. `422`: payload tidak valid.
 - Batch (maks 100): `POST /api/v1/ingest/notification/batch` dengan body array.
+
+## Parser notifikasi (M2)
+
+Setiap raw notifikasi diparse menjadi transaksi. Agar notifikasi tercatat:
+
+1. Parser untuk `package_name` app tersebut harus ada (`backend/app/parsers/`). Saat ini: **myBCA**.
+2. Harus ada tepat satu akun aktif dengan `package_name` yang sama di tabel `accounts`.
+
+Status raw: `parsed` (jadi transaksi/duplikat), `ignored` (bukan transaksi / app tanpa parser),
+`failed` (format tidak dikenal atau akun belum ada, lihat `parse_error`). Parser hanya boleh ditulis
+dari notifikasi asli di `backend/tests/fixtures/<sumber>/`.
 
 ## Test
 

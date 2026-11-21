@@ -65,8 +65,53 @@ agar Android bisa menandai tiap item outbox. Batch 1–100 item; satu item tidak
 - Teks tidak di-strip/dimodifikasi.
 
 ### D-013: Status raw setelah ingest = `pending`
-Parser belum ada di M1, jadi raw disimpan `pending`. M2 akan menjalankan parser setelah simpan
-dan memproses raw `pending` yang sudah ada.
+Di M1 raw disimpan `pending`. Sejak M2 parser langsung dijalankan setelah simpan; raw `pending`
+lama diproses lewat `reparse_all(pending)` (endpoint `POST /raw-notifications/reparse-all` di M3).
 
 ### D-014: Rate limit ingest diserahkan ke Cloudflare WAF
 `slowapi` (opsional di PRD) tidak ditambahkan; rate limit dikonfigurasi di Cloudflare pada M6.
+
+## M2
+
+### D-015: Hanya parser myBCA; dataset contoh tidak dipakai sebagai fixture
+`docs/notifikasi_bank_ewallet_id.json` (420 contoh, 7 sumber) adalah data sintetis
+(package_name berselang-seling, judul gabungan seperti "DANA Kaget / Transfer Masuk", nama & tanggal seragam,
+tanpa notifikasi non-transaksi). Sesuai PRD §17.4, parser tidak ditulis dari data itu.
+Satu-satunya fixture asli: 5 notifikasi myBCA (`tests/fixtures/bca/`, ditranskripsi dari screenshot).
+Sumber lain menunggu notifikasi asli (paling mudah dikumpulkan dari `raw_notifications` setelah M4);
+raw dari package tanpa parser tersimpan sebagai `ignored` dan bisa di-reparse nanti.
+`package_name` myBCA (`com.bca.mybca.omni.android`) belum diverifikasi dari data listener.
+
+### D-016: `ParsedTransaction.category_hint`
+Tambahan di luar interface PRD. myBCA menyertakan kategori ("Makanan", "Tagihan Rutin") tetapi tidak
+menyertakan merchant pengeluaran, sehingga rule berbasis merchant tidak berguna untuk BCA.
+Auto-kategori: (1) `category_rules` (priority tertinggi dulu, hanya kategori bertipe sama dengan transaksi;
+regex tidak valid dilewati), lalu (2) `category_hint` dicocokkan ke nama kategori yang ada (case-insensitive).
+Kategori tidak dibuat otomatis.
+
+### D-017: Kolom `transactions.counter_raw_notification_id`
+Saat transfer_matcher menggabungkan expense (bank) + income (e-wallet) menjadi satu transfer,
+transaksi income dihapus dan raw-nya dicatat di kolom ini. Tanpa ini, reparse raw income akan
+membuat transaksi income lagi (duplikat).
+
+### D-018: Aturan pemrosesan raw
+- Package tanpa parser / parser mengembalikan `None` → `ignored`.
+- `ParseError` (judul dikenal tapi isi tidak cocok), error nominal, tidak ada akun aktif untuk package,
+  atau lebih dari satu akun aktif untuk package → `failed` + `parse_error`. Error tak terduga juga `failed`
+  dan dicatat (tanpa isi notifikasi). Tiap raw diproses dalam SAVEPOINT; satu raw gagal tidak memengaruhi lainnya.
+- Akun ditentukan dari `accounts.package_name` (harus tepat satu akun aktif).
+- `occurred_at` = waktu dari parser, atau `posted_at` jika tidak ada.
+- Nominal dengan sen ≠ 0 dibulatkan half-up dan confidence diturunkan (→ `needs_review`).
+- Transfer dari parser: `counterpart_hint` dicocokkan ke nama akun sendiri; jika tidak ketemu → `expense`.
+- Snapshot saldo hanya dibuat saat transaksi baru tersimpan (bukan untuk duplikat dedup).
+
+### D-019: Reparse tidak menimpa transaksi yang sudah ada
+Raw yang sudah punya transaksi (langsung atau sebagai sisi lawan transfer) dilewati saat reparse dan tetap
+`parsed`, agar koreksi manual pengguna (kategori, review) tidak hilang dan tidak ada duplikat.
+Untuk mem-parse ulang transaksi yang salah, hapus transaksinya dulu lalu reparse raw-nya.
+
+### D-020: Transfer matcher
+Hanya transaksi `source=notification` yang belum berupa transfer. Kandidat: tipe berlawanan, nominal sama,
+akun berbeda, |selisih waktu| ≤ 2 menit; dipilih yang paling dekat. Sisi expense menjadi transfer
+(`account_id` sumber, `to_account_id` tujuan, kategori dikosongkan, `needs_review` = OR keduanya).
+Top up dengan biaya admin (nominal beda) tidak digabung.

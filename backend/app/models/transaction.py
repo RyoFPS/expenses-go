@@ -43,6 +43,10 @@ class Transaction(Base):
     raw_notification_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("raw_notifications.id", ondelete="SET NULL"), index=True
     )
+    # Raw sisi lawan saat dua transaksi digabung jadi transfer oleh transfer_matcher (D-017).
+    counter_raw_notification_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("raw_notifications.id", ondelete="SET NULL"), index=True
+    )
     dedup_hash: Mapped[str | None] = mapped_column(Text, unique=True)
     needs_review: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_at: Mapped[datetime] = created_at_col()

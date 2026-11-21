@@ -57,7 +57,7 @@ async def test_accepts_and_stores_raw(client: httpx.AsyncClient, db_sessionmaker
     assert raw.text == payload["text"]  # tidak dimodifikasi / di-strip
     assert raw.posted_at == datetime(2025, 11, 21, 4, 40, 0, 123000, tzinfo=UTC)
     assert raw.received_at.tzinfo is not None
-    assert raw.parse_status == ParseStatus.pending
+    assert raw.parse_status == ParseStatus.ignored  # package tidak punya parser
     assert len(raw.content_hash) == 64
 
 

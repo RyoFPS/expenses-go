@@ -1,7 +1,7 @@
-"""Penyimpanan notifikasi mentah (idempoten via content_hash).
+"""Penyimpanan notifikasi mentah (idempoten via content_hash), lalu parsing ke transaksi.
 
-Parsing menjadi transaksi ditambahkan di M2; untuk sekarang raw disimpan dengan
-parse_status=pending.
+Raw di-commit lebih dulu sehingga tetap tersimpan meski parsing gagal; parsing dijalankan
+hanya untuk raw yang baru masuk (duplikat tidak diproses ulang).
 """
 
 import hashlib
@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import RawNotification
 from app.schemas.ingest import IngestResult, NotificationIn
+from app.services.processing import process_raw_ids
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,8 @@ async def store_notifications(
         .returning(RawNotification.id, RawNotification.content_hash)
     )
     inserted = {row.content_hash: row.id for row in await session.execute(stmt)}
-    await session.commit()
+    await session.commit()  # raw tersimpan dulu, apa pun hasil parsing
+    await process_raw_ids(session, list(inserted.values()))
 
     results: list[IngestResult] = []
     for h in hashes:
