@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Khusus build debug: izinkan HTTP ke server lokal (emulator 10.0.2.2 / LAN) dan
+     receiver konfigurasi via adb untuk pengujian otomatis. Build release tetap HTTPS saja. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:networkSecurityConfig="@xml/network_security_config_debug">
+        <receiver
+            android:name=".DebugConfigReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="app.financetracker.listener.DEBUG_CONFIG" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

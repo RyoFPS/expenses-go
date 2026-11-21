@@ -2,7 +2,7 @@
 
 Pencatat keuangan pribadi self-hosted dengan auto-capture dari notifikasi Android. Spesifikasi lengkap: [PRD.md](PRD.md). Keputusan desain: [docs/DECISIONS.md](docs/DECISIONS.md).
 
-Status: **M0**–**M3** selesai (fondasi, ingest, parser & transaksi, API inti).
+Status: **M0**–**M4** selesai (fondasi, ingest, parser & transaksi, API inti, listener Android).
 
 ## Struktur
 
@@ -64,6 +64,30 @@ Dokumentasi lengkap: http://127.0.0.1:8000/docs. Ringkasan (prefix `/api/v1`):
 
 Auth: endpoint selain ingest & `/healthz` butuh Cloudflare Access (`Cf-Access-Jwt-Assertion`).
 Untuk lokal set `ENV=dev` dan `AUTH_DISABLED=true`. Di luar itu `CF_ACCESS_TEAM_DOMAIN` dan `CF_ACCESS_AUD` wajib diisi.
+
+## Android listener (M4)
+
+App Kotlin di `android/` yang menangkap notifikasi dari app bank/e-wallet terpilih dan mengirim teks mentahnya ke
+`/api/v1/ingest/notification/batch`. Tidak ada parsing di Android.
+
+Build (butuh JDK 17+ dan Android SDK; Android Studio sudah menyediakan keduanya):
+
+```bash
+cd android
+./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk (boleh HTTP, untuk uji lokal)
+./gradlew assembleRelease      # HTTPS saja; perlu signing config sendiri
+./gradlew testDebugUnitTest    # unit test
+```
+
+Setup di HP:
+1. Install APK, buka app.
+2. Tab **Status** → "Buka pengaturan akses notifikasi" → aktifkan Finance Listener. Android 13+: jika tombolnya
+   abu-abu, buka Info aplikasi → ⋮ → "Izinkan setelan terbatas" dulu.
+3. Kecualikan app dari optimasi baterai (dan aktifkan Autostart di HP Xiaomi/Oppo/Vivo/Samsung).
+4. Tab **Server**: URL server, API key (`API_KEY` di `.env`), serta `CF-Access-Client-Id/Secret` (service token Cloudflare, M6).
+5. Tab **Aplikasi**: centang app bank/e-wallet. Tab **Outbox** menampilkan status kirim dan tombol kirim ulang.
+
+Secret disimpan di EncryptedSharedPreferences di HP, tidak pernah di repo.
 
 ## Test
 

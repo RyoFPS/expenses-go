@@ -157,3 +157,40 @@ Pipeline M2 butuh tepat satu akun per package; aturan ini mencegah konfigurasi a
 ### D-026: Format error validasi
 Error bisnis memakai `{"detail": "<pesan>"}`. Error validasi skema (422) memakai format bawaan FastAPI
 (`detail` berupa list per field) agar lokasi field yang salah tetap jelas.
+
+## M4
+
+### D-027: Toolchain Android
+AGP 9.1.0 (Kotlin bawaan AGP) + Gradle 9.3.1 + Kotlin 2.3.20 + KSP (Room). compileSdk/targetSdk 36 karena
+AGP 9.1 maksimal 36. Compose BOM 2026.06.01 (Compose 1.11): Compose 1.12+ mewajibkan compileSdk 37.
+Naik ke AGP yang mendukung API 37 bisa dilakukan nanti bersamaan dengan Compose terbaru.
+
+### D-028: Stack Android disederhanakan
+- HTTP memakai **OkHttp** saja (tanpa Retrofit; hanya 2 endpoint) dan `org.json` bawaan Android (tanpa plugin serialization).
+- UI Jetpack Compose satu Activity dengan 4 tab (Status, Aplikasi, Server, Outbox).
+- `androidx.security:security-crypto` (EncryptedSharedPreferences) sudah deprecated oleh Google, tetapi dipakai
+  sesuai PRD §12.4. Kunci di Android Keystore. Bisa diganti DataStore + Tink di masa depan.
+
+### D-029: Aturan penangkapan notifikasi
+- Hanya package yang dipilih pengguna. Notifikasi **group summary** dan **ongoing** diabaikan (ringkasan dari
+  notifikasi anak yang sudah ditangkap / progress & foreground service, bukan transaksi).
+- `text` = terpanjang dari `EXTRA_TEXT` dan `EXTRA_BIG_TEXT`; teks kosong diabaikan; dipotong ke batas server
+  (title 1.000, text 10.000) — praktis tidak pernah terjadi untuk notifikasi bank.
+- Saat listener (re)connect, notifikasi yang masih tampil ikut dibaca agar yang terlewat saat proses mati tetap masuk.
+  Duplikat dicegah unique index lokal (package, title, text, postedAt) + content_hash di server.
+- Repost notifikasi yang sama (key sama, isi sama) dalam 10 menit dilewati: beberapa app memperbarui notifikasi dengan
+  postTime baru, yang di server akan menjadi raw berbeda. Dua transaksi identik dari app yang memakai key berbeda
+  per notifikasi tetap tertangkap.
+
+### D-030: Outbox & sinkronisasi
+- Room outbox: PENDING → SENT (accepted/duplicate) atau FAILED (401/403/redirect Access/4xx = perlu perbaikan konfigurasi).
+- WorkManager: constraint jaringan, backoff eksponensial 30 detik, retry tanpa batas untuk error sementara
+  (IO, 408, 429, 5xx, respons 2xx yang tidak dikenali). Dipicu setiap notifikasi baru, saat app start, saat pengaturan
+  disimpan, dan periodik 15 menit sebagai jaring pengaman.
+- Kirim via `/ingest/notification/batch` (maks 100). Batch 422 → dikirim satu per satu agar hanya item rusak yang FAILED.
+- OkHttp tidak mengikuti redirect: Cloudflare Access me-redirect ke halaman login jika service token salah.
+- Item SENT dihapus setelah 30 hari. `allowBackup=false` + data extraction rules: secret & isi notifikasi tidak ikut backup.
+
+### D-031: Build debug untuk pengujian
+Build debug (`applicationId` `.debug`) mengizinkan HTTP (server lokal) dan punya `DebugConfigReceiver` untuk
+konfigurasi via adb pada uji otomatis di emulator. Build release hanya HTTPS dan tanpa receiver tersebut.
