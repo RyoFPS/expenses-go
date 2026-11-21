@@ -17,7 +17,7 @@ import uuid
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Category, CategoryRule
+from app.models import Category, CategoryRule, Transaction
 from app.models.enums import CategoryType, RuleMatchType, TransactionType
 
 logger = logging.getLogger(__name__)
@@ -63,3 +63,34 @@ async def pick_category(
             .limit(1)
         )
     return None
+
+
+async def apply_rules_to_uncategorized(session: AsyncSession) -> int:
+    """Jalankan ulang rules ke transaksi income/expense yang belum berkategori. Tidak commit."""
+    rows = (
+        await session.execute(
+            select(CategoryRule, Category.type)
+            .join(Category, Category.id == CategoryRule.category_id)
+            .order_by(CategoryRule.priority.desc(), CategoryRule.id)
+        )
+    ).all()
+    if not rows:
+        return 0
+
+    txs = await session.scalars(
+        select(Transaction).where(
+            Transaction.category_id.is_(None),
+            Transaction.type.in_([TransactionType.income, TransactionType.expense]),
+            Transaction.merchant.is_not(None),
+        )
+    )
+    updated = 0
+    for tx in txs:
+        cat_type = CategoryType(tx.type.value)
+        for rule, rule_cat_type in rows:
+            if rule_cat_type == cat_type and rule_matches(rule, tx.merchant):
+                tx.category_id = rule.category_id
+                updated += 1
+                break
+    await session.flush()
+    return updated

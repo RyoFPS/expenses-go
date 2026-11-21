@@ -12,6 +12,8 @@ TEST_API_KEY = "test-api-key"
 os.environ["ENV"] = "dev"
 # Paksa key yang diketahui test (menimpa API_KEY asli dari environment container).
 os.environ["API_KEY"] = TEST_API_KEY
+# Endpoint dashboard tanpa Cloudflare Access di test (auth diuji khusus di test_auth.py).
+os.environ["AUTH_DISABLED"] = "true"
 
 from collections.abc import AsyncIterator  # noqa: E402
 

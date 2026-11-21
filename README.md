@@ -2,7 +2,7 @@
 
 Pencatat keuangan pribadi self-hosted dengan auto-capture dari notifikasi Android. Spesifikasi lengkap: [PRD.md](PRD.md). Keputusan desain: [docs/DECISIONS.md](docs/DECISIONS.md).
 
-Status: **M0** (fondasi), **M1** (ingest notifikasi mentah), dan **M2** (parser & transaksi) selesai.
+Status: **M0**–**M3** selesai (fondasi, ingest, parser & transaksi, API inti).
 
 ## Struktur
 
@@ -49,6 +49,21 @@ Setiap raw notifikasi diparse menjadi transaksi. Agar notifikasi tercatat:
 Status raw: `parsed` (jadi transaksi/duplikat), `ignored` (bukan transaksi / app tanpa parser),
 `failed` (format tidak dikenal atau akun belum ada, lihat `parse_error`). Parser hanya boleh ditulis
 dari notifikasi asli di `backend/tests/fixtures/<sumber>/`.
+
+## API (M3)
+
+Dokumentasi lengkap: http://127.0.0.1:8000/docs. Ringkasan (prefix `/api/v1`):
+
+| Area | Endpoint |
+|---|---|
+| Akun | `GET/POST /accounts`, `PATCH /accounts/{id}`, `GET /accounts/{id}/balance`, `POST /accounts/{id}/reconcile` |
+| Transaksi | `GET/POST /transactions`, `GET/PATCH/DELETE /transactions/{id}`, `POST /transactions/{id}/mark-reviewed` |
+| Kategori | CRUD `/categories`, CRUD `/category-rules`, `POST /category-rules/apply` |
+| Raw | `GET /raw-notifications`, `POST /raw-notifications/{id}/reparse`, `POST /raw-notifications/reparse-all` |
+| Laporan | `GET /reports/summary`, `GET /reports/cashflow`, `GET /reports/net-worth` |
+
+Auth: endpoint selain ingest & `/healthz` butuh Cloudflare Access (`Cf-Access-Jwt-Assertion`).
+Untuk lokal set `ENV=dev` dan `AUTH_DISABLED=true`. Di luar itu `CF_ACCESS_TEAM_DOMAIN` dan `CF_ACCESS_AUD` wajib diisi.
 
 ## Test
 

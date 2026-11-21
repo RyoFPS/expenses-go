@@ -18,7 +18,7 @@ Untuk menjaga integritas uang di level DB:
 
 ### D-003: `accounts.name` unik
 Mencegah dua akun bernama sama (mis. dua "GoPay") yang membingungkan saat mapping parser.
-`package_name` **tidak** unik, karena satu app bank bisa mewakili beberapa rekening.
+`package_name` boleh sama di beberapa akun, tetapi hanya **satu akun aktif** per package (lihat D-021).
 
 ### D-004: Enum PostgreSQL native
 Semua enum di PRD §8 dibuat sebagai tipe ENUM PostgreSQL (menyimpan value, mis. `import`).
@@ -115,3 +115,45 @@ Hanya transaksi `source=notification` yang belum berupa transfer. Kandidat: tipe
 akun berbeda, |selisih waktu| ≤ 2 menit; dipilih yang paling dekat. Sisi expense menjadi transfer
 (`account_id` sumber, `to_account_id` tujuan, kategori dikosongkan, `needs_review` = OR keduanya).
 Top up dengan biaya admin (nominal beda) tidak digabung.
+
+## M3
+
+### D-021: Satu akun aktif per `package_name`
+Partial unique index `uq_accounts_active_package_name` (`WHERE is_active AND package_name IS NOT NULL`).
+Pipeline M2 butuh tepat satu akun per package; aturan ini mencegah konfigurasi ambigu sejak awal (409).
+
+### D-022: Auth Cloudflare Access
+- Endpoint selain `/healthz` dan `/api/v1/ingest/*` mewajibkan header `Cf-Access-Jwt-Assertion` yang valid:
+  RS256, signature dari JWKS `https://<team>/cdn-cgi/access/certs` (di-cache 1 jam), `aud` = `CF_ACCESS_AUD`,
+  `iss` = `https://<team>`, `exp` wajib. Gagal → `401 {"detail":"Unauthorized"}`.
+- Jika `AUTH_DISABLED` tidak aktif, `CF_ACCESS_TEAM_DOMAIN` dan `CF_ACCESS_AUD` wajib diisi; API gagal start bila kosong.
+- Dependensi baru: `pyjwt[crypto]` (verifikasi JWT/JWKS) dan `tzdata` (zona waktu Asia/Jakarta di image slim).
+
+### D-023: Rekonsiliasi
+- `GET /accounts/{id}/balance`: `calculated` = saldo saat ini; `diff` = `last_snapshot.balance` − saldo terhitung
+  **per waktu snapshot** (`calculated_at_snapshot`). Dibandingkan dengan saldo saat ini, transaksi setelah
+  snapshot akan selalu memunculkan selisih palsu.
+- Endpoint tambahan `POST /accounts/{id}/reconcile` (tombol "Buat transaksi penyesuaian", PRD §11): membuat
+  transaksi `source=manual` income/expense sebesar |diff| pada waktu snapshot, kategori "Penyesuaian saldo"
+  (dibuat otomatis per tipe bila belum ada). 409 jika tidak ada snapshot/diff = 0.
+
+### D-024: Aturan transaksi via API
+- `fee` hanya untuk transfer; transfer wajib `to_account_id` ≠ `account_id`; transfer tidak berkategori;
+  tipe kategori harus sama dengan tipe transaksi. Pelanggaran → 422 dengan pesan.
+- `source` dan `needs_review` tidak bisa diisi client (pakai `mark-reviewed`). `occurred_at` wajib timezone-aware.
+- PATCH memvalidasi state akhir. Mengubah tipe otomatis mengosongkan `to_account_id` (jika bukan transfer) dan
+  kategori lama (jika tidak diisi eksplisit).
+- Endpoint tambahan `GET /transactions/{id}` (detail + teks notifikasi mentah) untuk halaman detail PRD §13.
+- Filter `account_id` mencakup transfer masuk (`to_account_id`). `q` mencari di merchant & catatan (wildcard di-escape).
+- `GET /accounts` menyertakan `balance` terhitung agar dashboard tidak perlu N request.
+
+### D-025: Laporan
+- Batas hari/bulan dan pengelompokan memakai Asia/Jakarta; minggu dimulai Senin.
+- Transfer antar akun sendiri tidak dihitung pemasukan/pengeluaran; **fee transfer dihitung pengeluaran**
+  (`summary.fees` menampilkan porsinya). `by_category` hanya income/expense; tanpa kategori → "Tanpa kategori".
+- Cashflow mengisi periode kosong dengan 0 (siap untuk chart); rentang maksimal 3×366 hari.
+- `net-worth` menjumlah semua akun termasuk yang nonaktif (saldo tetap milik pengguna).
+
+### D-026: Format error validasi
+Error bisnis memakai `{"detail": "<pesan>"}`. Error validasi skema (422) memakai format bawaan FastAPI
+(`detail` berupa list per field) agar lokasi field yang salah tetap jelas.
