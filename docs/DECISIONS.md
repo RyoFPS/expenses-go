@@ -264,3 +264,11 @@ mencoba konek tanpa token.
 
 ### D-040: Rate limit
 Rate limit ingest di Cloudflare WAF (60 req/menit per IP, block 1 menit), bukan `slowapi` (lihat D-014).
+
+## Pasca-M6
+
+### D-041: APScheduler tidak dipakai
+PRD §6 menyebut APScheduler untuk background job, tetapi tidak ada pekerjaan terjadwal di dalam proses API:
+parsing & transfer matcher berjalan sinkron setelah setiap ingest (PRD §10), reparse dipicu lewat endpoint, dan backup
+harian berjalan di container `backup` (cron). Menambah scheduler in-process hanya menambah dependensi dan risiko job ganda
+jika API dijalankan lebih dari satu proses. Tambahkan bila nanti ada kebutuhan nyata (mis. notifikasi Fase 2).
