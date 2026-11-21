@@ -112,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            <nav aria-label="Navigasi utama">
+            <nav aria-label="Navigasi utama" className="p-2">
               <SidebarMenu>
                 {NAV.map(({ href, label, icon: Icon }) => {
                   const active = isActive(pathname, href)
