@@ -28,6 +28,7 @@ services:
       AUTH_DISABLED: ${AUTH_DISABLED:-false}
       CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:-}
       CF_ACCESS_AUD: ${CF_ACCESS_AUD:-}
+      CF_ACCESS_INGEST_AUD: ${CF_ACCESS_INGEST_AUD:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
@@ -64,8 +65,46 @@ services:
       timeout: 3s
       retries: 5
 
+  # Backup harian pg_dump -> volume terpisah `backups`, retensi 14 hari (lihat docs/RESTORE.md).
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/ops/entrypoint.sh"]
+    environment:
+      TZ: Asia/Jakarta
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      BACKUP_CRON: ${BACKUP_CRON:-0 2 * * *}
+      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - ./ops/backup:/ops:ro
+      - backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [internal]
+
+  # Cloudflare Tunnel (remotely-managed, token dari dashboard Zero Trust). Satu-satunya jalan masuk dari internet.
+  # Aktifkan dengan profile: docker compose --profile tunnel up -d   (lihat docs/DEPLOY.md)
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks: [internal]
+
 networks:
   internal:
 
 volumes:
   db_data:
+  backups:

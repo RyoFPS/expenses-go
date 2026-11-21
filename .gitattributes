@@ -1,0 +1,5 @@
+# Skrip yang dijalankan di container Linux harus LF (repo ini dikerjakan di Windows dengan autocrlf).
+*.sh        text eol=lf
+gradlew     text eol=lf
+Dockerfile  text eol=lf
+*.bat       text eol=crlf

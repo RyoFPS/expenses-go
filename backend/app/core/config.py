@@ -19,10 +19,12 @@ class Settings(BaseSettings):
     # team domain mis. "namatim.cloudflareaccess.com"; aud = Application Audience (AUD) tag.
     cf_access_team_domain: str | None = None
     cf_access_aud: str | None = None
+    # AUD aplikasi Access terpisah untuk /api/v1/ingest* (policy: Service Auth / service token saja).
+    cf_access_ingest_aud: str | None = None
 
     log_level: str = "INFO"
 
-    @field_validator("cf_access_team_domain", "cf_access_aud", mode="before")
+    @field_validator("cf_access_team_domain", "cf_access_aud", "cf_access_ingest_aud", mode="before")
     @classmethod
     def _empty_to_none(cls, v: str | None) -> str | None:
         return v.strip() or None if isinstance(v, str) else v
@@ -39,9 +41,10 @@ class Settings(BaseSettings):
         if self.auth_disabled:
             if self.env != "dev":
                 raise ValueError("AUTH_DISABLED=true hanya boleh dipakai jika ENV=dev")
-        elif not (self.cf_access_team_domain and self.cf_access_aud):
+        elif not (self.cf_access_team_domain and self.cf_access_aud and self.cf_access_ingest_aud):
             raise ValueError(
-                "CF_ACCESS_TEAM_DOMAIN dan CF_ACCESS_AUD wajib diisi jika AUTH_DISABLED tidak aktif"
+                "CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD, dan CF_ACCESS_INGEST_AUD wajib diisi "
+                "jika AUTH_DISABLED tidak aktif"
             )
         return self
 

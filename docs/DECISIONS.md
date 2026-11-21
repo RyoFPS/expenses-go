@@ -238,3 +238,29 @@ pernah 91), Accessibility 100, Best Practices 100**, CLS 0, FCP ~0,9–1,1 s, TB
 LCP terobservasi ~0,5 s (sama dengan FCP; angka total saldo ada di HTML server). Sisa skor dibatasi oleh
 JS framework (React + Next ±200 KB gzip) yang dihitung model simulasi Lighthouse sebagai dependensi LCP, plus noise CPU
 mesin lokal pada TBT. Produksi di belakang Cloudflare (HTTP/2/3, Brotli) belum diukur (M6).
+
+## M6
+
+### D-037: Dua aplikasi Cloudflare Access
+- **Finance Ingest** (`/api/v1/ingest`): policy *Service Auth* dengan service token `finance-android` saja.
+- **Finance Dashboard** (seluruh domain): policy *Allow* email pemilik (One-time PIN / Google).
+- Backend memvalidasi `Cf-Access-Jwt-Assertion` di keduanya (defense-in-depth bila ada jalur ke origin yang melewati edge):
+  ingest wajib JWT ber-AUD `CF_ACCESS_INGEST_AUD` **dan** klaim `common_name` (hanya ada pada JWT service token),
+  **ditambah** `X-API-Key`. JWT login dashboard tidak berlaku untuk ingest dan sebaliknya.
+- `CF_ACCESS_INGEST_AUD` baru dan wajib bila `AUTH_DISABLED=false` (API gagal start jika kosong).
+
+### D-038: Routing tunnel
+Tunnel remotely-managed (token). Public hostname dengan path `^/api/` → `api:8000`, sisanya → `web:3000`.
+Browser tetap memanggil `/api/v1/*` di domain yang sama (rewrite Next.js tetap dipakai untuk dev lokal/Docker tanpa tunnel).
+`cloudflared` di-pin ke `2026.10.7` dan berada di profile compose `tunnel` (`make up-prod`) agar stack lokal tidak
+mencoba konek tanpa token.
+
+### D-039: Backup
+- Container `postgres:16-alpine` (versi `pg_dump` = versi server) + busybox `crond`, jadwal `BACKUP_CRON` default 02:00 WIB.
+- `pg_dump --format=custom`, divalidasi `pg_restore --list` sebelum di-rename dari `.partial`; volume `backups` terpisah
+  dari volume DB; retensi `BACKUP_RETENTION_DAYS` = 14.
+- `ops/backup/verify-restore.sh` = bukti AC: restore ke DB baru yang kosong lalu bandingkan count + md5 isi tiap tabel.
+- Skrip dipanggil dengan `sh` dan `.gitattributes` memaksa LF, karena repo dikerjakan di Windows (autocrlf, file mode).
+
+### D-040: Rate limit
+Rate limit ingest di Cloudflare WAF (60 req/menit per IP, block 1 menit), bukan `slowapi` (lihat D-014).

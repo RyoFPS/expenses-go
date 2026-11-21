@@ -13,6 +13,7 @@ from tests.conftest import TEST_API_KEY
 
 TEAM = "tim.cloudflareaccess.com"
 AUD = "aud-tag-123"
+INGEST_AUD = "aud-ingest-456"
 KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 OTHER_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
@@ -40,6 +41,7 @@ def auth_enabled(monkeypatch):
         auth_disabled=False,
         cf_access_team_domain=TEAM,
         cf_access_aud=AUD,
+        cf_access_ingest_aud=INGEST_AUD,
         _env_file=None,
     )
     monkeypatch.setattr(auth, "get_jwks_client", lambda domain: FakeJWKClient())
@@ -84,14 +86,52 @@ async def test_invalid_token_rejected(client, auth_enabled, token) -> None:
         assert resp.json() == {"detail": "Unauthorized"}
 
 
-async def test_ingest_and_healthz_do_not_need_access_jwt(client, auth_enabled) -> None:
+def service_token(aud: str = INGEST_AUD, common_name: str = "abc123.access") -> str:
+    """JWT yang diterbitkan Access untuk service token: tanpa email, punya common_name (= Client ID)."""
+    now = int(time.time())
+    claims = {"aud": [aud], "iss": f"https://{TEAM}", "iat": now, "exp": now + 300, "common_name": common_name, "sub": ""}
+    return jwt.encode(claims, KEY, algorithm="RS256", headers={"kid": "k1"})
+
+
+NOTIF = {"package_name": "com.x", "title": "t", "text": "x", "posted_at": 1_763_700_000_000}
+
+
+async def test_healthz_needs_no_auth(client, auth_enabled) -> None:
     assert (await client.get("/healthz")).status_code == 200
-    resp = await client.post(
-        "/api/v1/ingest/notification",
-        json={"package_name": "com.x", "title": "t", "text": "x", "posted_at": 1_763_700_000_000},
-        headers={"X-API-Key": TEST_API_KEY},
-    )
-    assert resp.status_code == 202
+
+
+async def test_ingest_with_service_token_and_api_key(client, auth_enabled) -> None:
+    headers = {"X-API-Key": TEST_API_KEY, "Cf-Access-Jwt-Assertion": service_token()}
+    assert (await client.post("/api/v1/ingest/notification", json=NOTIF, headers=headers)).status_code == 202
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        None,
+        "sampah",
+        make_token(),  # JWT login dashboard (AUD dashboard, tanpa common_name)
+        make_token(aud=INGEST_AUD),  # AUD ingest tapi dari login pengguna, bukan service token
+        service_token(aud=AUD),  # service token untuk aplikasi Access lain
+        service_token(common_name=""),
+        service_token(aud="aud-lain"),
+    ],
+    ids=["missing", "garbage", "user-jwt", "user-jwt-ingest-aud", "dashboard-aud", "no-common-name", "unknown-aud"],
+)
+async def test_ingest_rejects_without_valid_service_token(client, db_sessionmaker, auth_enabled, token) -> None:
+    headers = {"X-API-Key": TEST_API_KEY} | ({"Cf-Access-Jwt-Assertion": token} if token else {})
+    assert (await client.post("/api/v1/ingest/notification", json=NOTIF, headers=headers)).status_code == 401
+    assert (await client.post("/api/v1/ingest/notification/batch", json=[NOTIF], headers=headers)).status_code == 401
+
+
+async def test_ingest_service_token_still_needs_api_key(client, auth_enabled) -> None:
+    headers = {"X-API-Key": "salah", "Cf-Access-Jwt-Assertion": service_token()}
+    assert (await client.post("/api/v1/ingest/notification", json=NOTIF, headers=headers)).status_code == 401
+
+
+async def test_ingest_service_token_not_valid_for_dashboard(client, auth_enabled) -> None:
+    resp = await client.get("/api/v1/accounts", headers={"Cf-Access-Jwt-Assertion": service_token()})
+    assert resp.status_code == 401
 
 
 async def test_auth_disabled_in_dev_allows_without_token(client) -> None:

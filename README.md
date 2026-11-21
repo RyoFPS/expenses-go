@@ -2,7 +2,7 @@
 
 Pencatat keuangan pribadi self-hosted dengan auto-capture dari notifikasi Android. Spesifikasi lengkap: [PRD.md](PRD.md). Keputusan desain: [docs/DECISIONS.md](docs/DECISIONS.md).
 
-Status: **M0**–**M4** selesai; **M5** (web dashboard) selesai kecuali target Lighthouse Performance ≥ 90 (lihat `docs/DECISIONS.md` D-036).
+Status: **M0–M6** selesai di sisi kode. Tersisa langkah di akun Cloudflare Anda ([docs/DEPLOY.md](docs/DEPLOY.md)) dan pengukuran ulang Lighthouse di domain produksi (D-036).
 
 ## Struktur
 
@@ -10,7 +10,8 @@ Status: **M0**–**M4** selesai; **M5** (web dashboard) selesai kecuali target L
 backend/    FastAPI (Python 3.12), SQLAlchemy async, Alembic, pytest
 web/        Next.js dashboard (M5) — lihat web/README.md
 android/    Listener app Kotlin (M4)
-docs/       Dokumentasi & keputusan
+ops/        Backup/restore & verifikasi akses Cloudflare
+docs/       DEPLOY, RESTORE, ADD_PARSER, DECISIONS
 ```
 
 ## Menjalankan (Docker)
@@ -113,3 +114,9 @@ Selalu periksa file hasil autogenerate (mis. tipe ENUM tidak otomatis di-drop di
 |---|---|
 | `make down` | Hentikan semua container (data DB tetap di volume `db_data`) |
 | `make logs` | Ikuti log API |
+
+## Produksi
+
+- Deploy dengan Cloudflare Tunnel + Access: [docs/DEPLOY.md](docs/DEPLOY.md) (`make up-prod`, lalu `ops/check-access.sh`).
+- Backup harian & restore: [docs/RESTORE.md](docs/RESTORE.md) (`make backups`, `make backup`, `make restore-check`).
+- Menambah parser bank/e-wallet dari notifikasi asli: [docs/ADD_PARSER.md](docs/ADD_PARSER.md).

@@ -4,11 +4,16 @@ from fastapi import APIRouter, Body, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
+from app.core.auth import require_ingest_access
 from app.core.security import require_api_key
 from app.schemas.ingest import MAX_BATCH, BatchIngestResponse, IngestResult, NotificationIn
 from app.services.ingest import store_notifications
 
-router = APIRouter(prefix="/ingest", tags=["ingest"], dependencies=[Depends(require_api_key)])
+router = APIRouter(
+    prefix="/ingest",
+    tags=["ingest"],
+    dependencies=[Depends(require_api_key), Depends(require_ingest_access)],
+)
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
