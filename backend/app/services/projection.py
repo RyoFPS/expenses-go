@@ -93,7 +93,7 @@ async def cashflow_projection(session: AsyncSession) -> dict:
     for bill in bills:
         due = bill["next_date"]
         while due <= today + timedelta(days=30):
-            if due > today:
+            if due >= today:
                 result["upcoming_bills"].append({
                     "account_name": names[bill["account_id"]],
                     "merchant": bill["display_merchant"],

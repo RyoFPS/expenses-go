@@ -60,6 +60,31 @@ async def test_projection_includes_each_due_date_once_across_short_month(client,
     assert projection["estimated_30d"] == -500_000
 
 
+async def test_projection_counts_unpaid_bill_due_today_without_double_counting_payment(client, monkeypatch) -> None:
+    fixed_day(monkeypatch, date(2026, 4, 15))
+    bank = await create_account(client, "Bank")
+    for month in (1, 2, 3):
+        await create_tx(client, bank, "expense", 100_000, merchant="Rent",
+                        occurred_at=datetime(2026, month, 15, 3, tzinfo=UTC))
+    assert (await client.put(f"{API}/recurring-bills/decision", json={
+        "account_id": bank["id"], "merchant": "Rent", "status": "confirmed",
+    })).status_code == 204
+
+    url = f"{API}/reports/projection"
+    unpaid = (await client.get(url)).json()
+    assert [bill["due_date"] for bill in unpaid["upcoming_bills"]] == ["2026-04-15", "2026-05-15"]
+    assert unpaid["estimated_7d"] == -400_000
+    assert unpaid["estimated_30d"] == -500_000
+
+    await create_tx(client, bank, "expense", 100_000, merchant="Rent",
+                    occurred_at=datetime(2026, 4, 15, 3, tzinfo=UTC))
+    paid = (await client.get(url)).json()
+    assert paid["starting_balance"] == -400_000
+    assert [bill["due_date"] for bill in paid["upcoming_bills"]] == ["2026-05-15"]
+    assert paid["estimated_7d"] == -400_000
+    assert paid["estimated_30d"] == -500_000
+
+
 async def test_projection_without_three_complete_months_has_no_estimate(client, monkeypatch) -> None:
     fixed_day(monkeypatch, date(2026, 4, 10))
     url = f"{API}/reports/projection"
