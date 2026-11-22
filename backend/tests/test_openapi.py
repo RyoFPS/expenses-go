@@ -33,6 +33,9 @@ PRD_ENDPOINTS = [
     ("get", f"{P}/reports/summary"),
     ("get", f"{P}/reports/cashflow"),
     ("get", f"{P}/reports/net-worth"),
+    ("get", f"{P}/budgets"),
+    ("put", f"{P}/budgets/{{category_id}}"),
+    ("delete", f"{P}/budgets/{{category_id}}"),
     ("get", "/healthz"),
 ]
 

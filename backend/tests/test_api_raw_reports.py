@@ -52,6 +52,44 @@ async def test_reparse_unknown_raw_is_404(client) -> None:
 # --- reports ------------------------------------------------------------------
 
 
+async def test_budget_crud_month_isolation_and_expense_only(client) -> None:
+    makan = await create_category(client, "Makan")
+    gaji = await create_category(client, "Gaji", "income")
+
+    assert (await client.get(f"{API}/budgets", params={"month": "2026-11"})).json() == []
+
+    november = await client.put(
+        f"{API}/budgets/{makan['id']}", params={"month": "2026-11"}, json={"amount": 500_000}
+    )
+    assert november.status_code == 200, november.text
+    assert november.json()["amount"] == 500_000
+    assert november.json()["month"] == "2026-11-01"
+
+    updated = await client.put(
+        f"{API}/budgets/{makan['id']}", params={"month": "2026-11"}, json={"amount": 600_000}
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["id"] == november.json()["id"]
+    assert updated.json()["amount"] == 600_000
+
+    october = await client.put(
+        f"{API}/budgets/{makan['id']}", params={"month": "2026-10"}, json={"amount": 400_000}
+    )
+    assert october.status_code == 200, october.text
+    assert (await client.get(f"{API}/budgets", params={"month": "2026-11"})).json()[0]["amount"] == 600_000
+    assert (await client.get(f"{API}/budgets", params={"month": "2026-10"})).json()[0]["amount"] == 400_000
+
+    income_budget = await client.put(
+        f"{API}/budgets/{gaji['id']}", params={"month": "2026-11"}, json={"amount": 100_000}
+    )
+    assert income_budget.status_code == 422
+
+    deleted = await client.delete(f"{API}/budgets/{makan['id']}", params={"month": "2026-11"})
+    assert deleted.status_code == 204
+    assert (await client.get(f"{API}/budgets", params={"month": "2026-11"})).json() == []
+    assert (await client.get(f"{API}/budgets", params={"month": "2026-10"})).json()[0]["amount"] == 400_000
+
+
 async def test_monthly_summary(client) -> None:
     bank = await create_account(client, "Bank")
     wallet = await create_account(client, "Wallet", type="ewallet")
