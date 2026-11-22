@@ -2,6 +2,8 @@ package app.financetracker.listener
 
 import app.financetracker.listener.data.ServerConfig
 import app.financetracker.listener.sync.IngestClient
+import app.financetracker.listener.sync.HeartbeatResult
+import app.financetracker.listener.sync.ListenerHeartbeat
 import app.financetracker.listener.sync.ItemResult
 import app.financetracker.listener.sync.NotificationPayload
 import app.financetracker.listener.sync.SendOutcome
@@ -56,6 +58,28 @@ class IngestClientTest {
         assertEquals("isi 1", first.getString("text"))
         assertEquals(1_763_700_000_001L, first.getLong("posted_at"))
         assertEquals(setOf("package_name", "title", "text", "posted_at"), first.keys().asSequence().toSet())
+    }
+
+    @Test fun `heartbeat sends health only when listener is disabled and queue has failures`() = runTest {
+        respond(204)
+        assertEquals(HeartbeatResult.SENT, client().sendHeartbeat(ListenerHeartbeat("00000000-0000-0000-0000-000000000001", false, 2, 1, "0.1.0")))
+        val req = server.takeRequest()
+        assertEquals("/api/v1/ingest/listener-status/heartbeat", req.url.encodedPath)
+        assertEquals("kunci-rahasia", req.headers["X-API-Key"])
+        val body = JSONObject(req.body!!.utf8())
+        assertEquals(false, body.getBoolean("listener_enabled"))
+        assertEquals(2, body.getInt("pending_count"))
+        assertEquals(1, body.getInt("failed_count"))
+        assertEquals("0.1.0", body.getString("app_version"))
+        assertEquals(setOf("device_id", "listener_enabled", "pending_count", "failed_count", "app_version"), body.keys().asSequence().toSet())
+    }
+
+    @Test fun `heartbeat rejects permanent errors and retries transient server errors`() = runTest {
+        respond(401)
+        respond(503)
+        val c = client()
+        assertEquals(HeartbeatResult.REJECTED, c.sendHeartbeat(ListenerHeartbeat("id", true, 0, 0, "0.1.0")))
+        assertEquals(HeartbeatResult.RETRY, c.sendHeartbeat(ListenerHeartbeat("id", true, 0, 0, "0.1.0")))
     }
 
     @Test fun `cloudflare headers omitted when empty`() = runTest {

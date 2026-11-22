@@ -10,6 +10,7 @@ import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.UUID
 
 /** Konfigurasi koneksi ke backend. Tidak pernah di-log. */
 data class ServerConfig(
@@ -64,6 +65,10 @@ class SettingsStore(context: Context) {
     fun hasCfClientId() = !prefs.getString(KEY_CF_ID, null).isNullOrEmpty()
     fun hasCfClientSecret() = !prefs.getString(KEY_CF_SECRET, null).isNullOrEmpty()
 
+    fun deviceId(): String = prefs.getString(KEY_DEVICE_ID, null) ?: UUID.randomUUID().toString().also {
+        prefs.edit { putString(KEY_DEVICE_ID, it) }
+    }
+
     /** Field secret yang null tidak diubah (agar layar Settings tidak perlu menampilkan secret lama). */
     fun saveServer(baseUrl: String, apiKey: String?, cfClientId: String?, cfClientSecret: String?) {
         prefs.edit {
@@ -81,5 +86,6 @@ class SettingsStore(context: Context) {
         const val KEY_CF_ID = "cf_client_id"
         const val KEY_CF_SECRET = "cf_client_secret"
         const val KEY_PACKAGES = "monitored_packages"
+        const val KEY_DEVICE_ID = "device_id"
     }
 }

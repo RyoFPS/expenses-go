@@ -79,6 +79,7 @@ async def test_invalid_token_rejected(client, auth_enabled, token) -> None:
         ("GET", "/api/v1/category-rules"),
         ("GET", "/api/v1/raw-notifications"),
         ("GET", "/api/v1/reports/net-worth"),
+        ("GET", "/api/v1/listener-status"),
         ("POST", "/api/v1/transactions"),
     ]:
         resp = await client.request(method, path, headers=headers)
@@ -103,6 +104,14 @@ async def test_healthz_needs_no_auth(client, auth_enabled) -> None:
 async def test_ingest_with_service_token_and_api_key(client, auth_enabled) -> None:
     headers = {"X-API-Key": TEST_API_KEY, "Cf-Access-Jwt-Assertion": service_token()}
     assert (await client.post("/api/v1/ingest/notification", json=NOTIF, headers=headers)).status_code == 202
+    heartbeat = {
+        "device_id": "00000000-0000-0000-0000-000000000001",
+        "listener_enabled": True,
+        "pending_count": 0,
+        "failed_count": 0,
+        "app_version": "0.1.0",
+    }
+    assert (await client.post("/api/v1/ingest/listener-status/heartbeat", json=heartbeat, headers=headers)).status_code == 204
 
 
 @pytest.mark.parametrize(
@@ -122,6 +131,14 @@ async def test_ingest_rejects_without_valid_service_token(client, db_sessionmake
     headers = {"X-API-Key": TEST_API_KEY} | ({"Cf-Access-Jwt-Assertion": token} if token else {})
     assert (await client.post("/api/v1/ingest/notification", json=NOTIF, headers=headers)).status_code == 401
     assert (await client.post("/api/v1/ingest/notification/batch", json=[NOTIF], headers=headers)).status_code == 401
+    heartbeat = {
+        "device_id": "00000000-0000-0000-0000-000000000001",
+        "listener_enabled": True,
+        "pending_count": 0,
+        "failed_count": 0,
+        "app_version": "0.1.0",
+    }
+    assert (await client.post("/api/v1/ingest/listener-status/heartbeat", json=heartbeat, headers=headers)).status_code == 401
 
 
 async def test_ingest_service_token_still_needs_api_key(client, auth_enabled) -> None:

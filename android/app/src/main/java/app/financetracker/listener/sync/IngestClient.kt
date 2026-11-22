@@ -14,6 +14,15 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 data class NotificationPayload(val packageName: String, val title: String, val text: String, val postedAt: Long)
+data class ListenerHeartbeat(
+    val deviceId: String,
+    val listenerEnabled: Boolean,
+    val pendingCount: Int,
+    val failedCount: Int,
+    val appVersion: String,
+)
+
+enum class HeartbeatResult { SENT, RETRY, REJECTED }
 
 data class ItemResult(val accepted: Boolean, val rawId: String?)
 
@@ -41,6 +50,33 @@ class IngestClient(
     private val config: ServerConfig,
     private val http: OkHttpClient = defaultHttpClient(),
 ) : IngestApi {
+
+    suspend fun sendHeartbeat(heartbeat: ListenerHeartbeat): HeartbeatResult = withContext(Dispatchers.IO) {
+        val request = try {
+            Request.Builder()
+                .url(config.baseUrl.trimEnd('/') + "/api/v1/ingest/listener-status/heartbeat")
+                .header("X-API-Key", config.apiKey)
+                .apply {
+                    if (config.cfClientId.isNotEmpty()) header("CF-Access-Client-Id", config.cfClientId)
+                    if (config.cfClientSecret.isNotEmpty()) header("CF-Access-Client-Secret", config.cfClientSecret)
+                }
+                .post(heartbeat.toJson().toString().toRequestBody(JSON))
+                .build()
+        } catch (_: IllegalArgumentException) {
+            return@withContext HeartbeatResult.REJECTED
+        }
+        try {
+            http.newCall(request).execute().use {
+                when {
+                    it.isSuccessful -> HeartbeatResult.SENT
+                    classify(it.code) is SendOutcome.Retry -> HeartbeatResult.RETRY
+                    else -> HeartbeatResult.REJECTED
+                }
+            }
+        } catch (_: IOException) {
+            HeartbeatResult.RETRY
+        }
+    }
 
     override suspend fun sendBatch(items: List<NotificationPayload>): SendOutcome {
         val body = JSONArray().apply { items.forEach { put(it.toJson()) } }.toString()
@@ -88,6 +124,13 @@ class IngestClient(
 
     companion object {
         private val JSON = "application/json; charset=utf-8".toMediaType()
+
+        private fun ListenerHeartbeat.toJson() = JSONObject()
+            .put("device_id", deviceId)
+            .put("listener_enabled", listenerEnabled)
+            .put("pending_count", pendingCount)
+            .put("failed_count", failedCount)
+            .put("app_version", appVersion)
 
         fun defaultHttpClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
