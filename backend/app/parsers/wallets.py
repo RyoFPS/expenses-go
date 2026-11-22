@@ -1,4 +1,4 @@
-"""Formats observed in GoPay QRIS payment and DANA Bisnis receipt notifications."""
+"""Observed GoPay/Jago payments and DANA Bisnis receipt notifications."""
 
 import re
 
@@ -10,6 +10,11 @@ _GOPAY_PAYMENT = re.compile(
     re.DOTALL,
 )
 _DANA_RECEIPT = re.compile(r"(?P<amount>Rp\s*[\d.,]+)\s+diterima\s+DANA\s+Bisnis\.")
+_JAGO_PAYMENT = re.compile(
+    r"You\s+have\s+paid\s+(?P<amount>Rp\s*[\d.,]+)\s+to\s+(?P<merchant>.+?)\.\s+"
+    r"Need\s+help\?\s+Contact\s+Tanya\s+Jago\s+at\s+1500\s+746\.",
+    re.DOTALL,
+)
 
 
 class GopayParser:
@@ -42,4 +47,22 @@ class DanaParser:
         amount = parse_amount(match.group("amount"))
         return ParsedTransaction(
             type="income", amount=amount.rupiah, confidence=0.95 if amount.exact else 0.5
+        )
+
+
+class JagoParser:
+    package_names = {"com.jago.digitalBanking"}
+
+    def parse(self, title: str, text: str) -> ParsedTransaction | None:
+        if title.strip() != "Jago":
+            return None
+        match = _JAGO_PAYMENT.fullmatch(text.strip())
+        if match is None:
+            raise ParseError("format pembayaran Jago belum dikenali")
+        amount = parse_amount(match.group("amount"))
+        return ParsedTransaction(
+            type="expense",
+            amount=amount.rupiah,
+            merchant=" ".join(match.group("merchant").split()),
+            confidence=0.95 if amount.exact else 0.5,
         )

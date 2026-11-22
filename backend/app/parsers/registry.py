@@ -2,7 +2,7 @@
 
 from app.parsers.base import Parser
 from app.parsers.bca import BcaParser
-from app.parsers.wallets import DanaParser, GopayParser
+from app.parsers.wallets import DanaParser, GopayParser, JagoParser
 
 _REGISTRY: dict[str, Parser] = {}
 
@@ -28,5 +28,5 @@ def registered_packages() -> set[str]:
     return set(_REGISTRY)
 
 
-for _p in (BcaParser(), GopayParser(), DanaParser()):
+for _p in (BcaParser(), GopayParser(), DanaParser(), JagoParser()):
     register(_p)

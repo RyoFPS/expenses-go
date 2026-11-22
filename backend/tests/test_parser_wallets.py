@@ -8,11 +8,16 @@ from sqlalchemy import select
 from app.models import Account, RawNotification, Transaction
 from app.models.enums import AccountType, ParseStatus, TransactionType
 from app.parsers import ParseError, get_parser
-from app.parsers.wallets import DanaParser, GopayParser
-from app.services.processing import reparse_all
+from app.parsers.wallets import DanaParser, GopayParser, JagoParser
+from app.services.processing import reparse, reparse_all
 
 SAMPLES = json.loads(
     (Path(__file__).parent / "fixtures" / "wallets" / "qris_self_transfer.json").read_text(
+        encoding="utf-8"
+    )
+)
+JAGO_SAMPLES = json.loads(
+    (Path(__file__).parent / "fixtures" / "wallets" / "jago_qris_self_transfer.json").read_text(
         encoding="utf-8"
     )
 )
@@ -60,3 +65,36 @@ async def test_ignored_observed_pair_reparses_as_transfer(db_sessionmaker) -> No
         )
         assert tx.raw_notification_id is not None
         assert tx.counter_raw_notification_id is not None
+
+
+def test_observed_jago_payment() -> None:
+    parser = get_parser(JAGO_SAMPLES["jago"]["package_name"])
+    assert isinstance(parser, JagoParser)
+    result = parser.parse(JAGO_SAMPLES["jago"]["title"], JAGO_SAMPLES["jago"]["text"])
+    assert (result.type, result.amount, result.merchant) == ("expense", 1565, "Toko Contoh, Service")
+    assert parser.parse("Payday is Here!! Ready to Treat Yourself? 🛍️✨", "") is None
+    with pytest.raises(ParseError):
+        parser.parse("Jago", "Format pembayaran yang belum dikenal")
+
+
+async def test_jago_reparse_matches_existing_dana_income(db_sessionmaker) -> None:
+    async with db_sessionmaker() as session:
+        jago = Account(name="Jago", type=AccountType.bank, package_name="com.jago.digitalBanking")
+        dana = Account(name="DANA", type=AccountType.ewallet, package_name="id.dana")
+        session.add_all([jago, dana])
+        when = datetime(2026, 11, 22, 13, 32, 26, tzinfo=UTC)
+        for key, at in (("jago", when), ("dana", when + timedelta(seconds=6))):
+            sample = JAGO_SAMPLES[key]
+            session.add(RawNotification(**sample, posted_at=at, content_hash=key))
+        await session.commit()
+        raw_ids = {raw.package_name: raw.id for raw in (await session.scalars(select(RawNotification))).all()}
+        assert await reparse(session, raw_ids["id.dana"]) == ParseStatus.parsed
+        assert await reparse(session, raw_ids["com.jago.digitalBanking"]) == ParseStatus.parsed
+
+    async with db_sessionmaker() as session:
+        [tx] = (await session.scalars(select(Transaction))).all()
+        assert (tx.type, tx.amount, tx.account_id, tx.to_account_id) == (
+            TransactionType.transfer, 1565, jago.id, dana.id
+        )
+        assert tx.raw_notification_id == raw_ids["com.jago.digitalBanking"]
+        assert tx.counter_raw_notification_id == raw_ids["id.dana"]

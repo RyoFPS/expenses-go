@@ -1,0 +1,13 @@
+{
+  "provenance": "Raw notifications from the user's phone on 2026-11-22; merchant name anonymized without changing the sentence structure.",
+  "jago": {
+    "package_name": "com.jago.digitalBanking",
+    "title": "Jago",
+    "text": "You have paid Rp 1.565 to Toko Contoh, Service. Need help? Contact Tanya Jago at 1500 746."
+  },
+  "dana": {
+    "package_name": "id.dana",
+    "title": "Pembayaran Masuk",
+    "text": "Rp1.565 diterima DANA Bisnis."
+  }
+}
