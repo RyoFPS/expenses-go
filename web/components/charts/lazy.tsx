@@ -128,15 +128,17 @@ export function LazyCumulativeExpense({
 export function LazyCategoryBars({
   items,
   type,
+  month,
   limit,
 }: {
   items: MonthlySummary["by_category"]
   type: "income" | "expense"
+  month?: string
   limit?: number
 }) {
   return (
     <ChartGate>
-      <CategoryBarsChart items={items} type={type} limit={limit} />
+      <CategoryBarsChart items={items} type={type} month={month} limit={limit} />
     </ChartGate>
   )
 }
