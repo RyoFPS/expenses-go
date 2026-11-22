@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import date
 from statistics import median
 
-from app.core.timeutil import JAKARTA
+from app.core.timeutil import JAKARTA, today_jakarta
 from app.models import Transaction
 from app.models.enums import TransactionType
 from app.services.dedup import normalize_merchant
@@ -23,6 +23,7 @@ def detect_recurring_bills(transactions: list[Transaction]) -> list[dict]:
             groups[key][month] = tx
 
     bills = []
+    today = today_jakarta()
     for (account_id, merchant), by_month in groups.items():
         # shortcut: satu transaksi terakhir per bulan; perlu pemilihan pasangan bila merchant sering ditagih lebih dari sekali sebulan.
         months = sorted(by_month)[-3:]
@@ -42,13 +43,16 @@ def detect_recurring_bills(transactions: list[Transaction]) -> list[dict]:
             continue
         last_month = months[-1]
         year, month = (last_month[0] + 1, 1) if last_month[1] == 12 else (last_month[0], last_month[1] + 1)
+        next_date = date(year, month, min(anchor, calendar.monthrange(year, month)[1]))
+        if next_date < today:
+            continue
         bills.append({
             "account_id": account_id,
             "merchant": merchant,
             "display_merchant": matches[-1].merchant.strip(),
             "estimated_amount": estimate,
             "last_date": matches[-1].occurred_at.astimezone(JAKARTA).date(),
-            "next_date": date(year, month, min(anchor, calendar.monthrange(year, month)[1])),
+            "next_date": next_date,
             "last_transaction_id": matches[-1].id,
         })
     return bills

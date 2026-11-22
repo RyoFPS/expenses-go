@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 import pytest
@@ -10,6 +10,11 @@ from tests.api_helpers import API, create_account, create_tx
 
 
 ACCOUNT = uuid.uuid4()
+
+
+@pytest.fixture(autouse=True)
+def fixed_today(monkeypatch) -> None:
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 3, 1))
 
 
 def tx(month: int, day: int, amount: int = 100_000, *, merchant: str | None = "Netflix",
@@ -33,6 +38,14 @@ def test_five_days_and_twenty_percent_are_allowed() -> None:
     assert len(detect_recurring_bills([tx(1, 15), tx(2, 20, 120_000), tx(3, 15)])) == 1
 
 
+def test_stale_pattern_is_hidden_after_next_date(monkeypatch) -> None:
+    history = [tx(1, 15), tx(2, 15), tx(3, 15)]
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 4, 15))
+    assert len(detect_recurring_bills(history)) == 1
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 4, 16))
+    assert detect_recurring_bills(history) == []
+
+
 @pytest.mark.parametrize("transactions", [
     [tx(1, 15), tx(2, 15)],
     [tx(1, 15), tx(1, 16), tx(2, 15)],
@@ -49,7 +62,7 @@ def test_non_monthly_patterns_are_excluded(transactions) -> None:
     assert detect_recurring_bills(transactions) == []
 
 
-async def test_decisions_persist_and_ignored_candidate_returns_after_new_transaction(client) -> None:
+async def test_decisions_persist_and_ignored_candidate_returns_after_new_transaction(client, monkeypatch) -> None:
     account = await create_account(client, "Bank")
     for month in (1, 2, 3):
         await create_tx(client, account, "expense", 100_000, merchant=" Netflix ",
@@ -72,3 +85,5 @@ async def test_decisions_persist_and_ignored_candidate_returns_after_new_transac
     assert confirmed["confirmed"][0]["estimated_amount"] == 100_000
     assert confirmed["confirmed"][0]["next_date"] == "2026-05-15"
     assert (await client.put(f"{url}/decision", json={**body, "merchant": "Other"})).status_code == 422
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 11, 22))
+    assert (await client.get(url)).json() == {"candidates": [], "confirmed": []}
