@@ -52,3 +52,20 @@ class NetWorth(BaseModel):
 
 class LatestNotification(BaseModel):
     received_at: datetime | None
+
+
+class ProjectedBill(BaseModel):
+    account_name: str
+    merchant: str
+    estimated_amount: int
+    due_date: date
+
+
+class CashflowProjection(BaseModel):
+    as_of: date
+    history_from: date
+    history_to: date
+    starting_balance: int
+    estimated_7d: int | None
+    estimated_30d: int | None
+    upcoming_bills: list[ProjectedBill]

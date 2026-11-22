@@ -25,6 +25,7 @@ import {
   ACCOUNT_TYPE_LABEL,
   addDays,
   addMonths,
+  formatDate,
   formatDateTime,
   formatMonth,
   jakartaDate,
@@ -37,6 +38,7 @@ import {
   useListenerStatus,
   useNeedsReviewCount,
   useNetWorth,
+  useProjection,
   useSavingGoals,
   useSummary,
   useTransactions,
@@ -55,6 +57,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
   const previousMonth = addMonths(month, -1)
   const previousEnd = previousComparableEnd(today)
   const netWorth = useNetWorth({ initialData: initial?.netWorth ?? undefined })
+  const projection = useProjection()
   const accounts = useAccounts({ initialData: initial?.accounts ?? undefined })
   const savingGoals = useSavingGoals()
   const summary = useSummary(month)
@@ -91,6 +94,52 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
           />
         )}
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle id="projection-heading">Proyeksi arus kas</CardTitle>
+        </CardHeader>
+        <CardContent aria-labelledby="projection-heading" className="space-y-4">
+          {projection.isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : projection.isError ? (
+            <ErrorNote error={projection.error} />
+          ) : projection.data?.estimated_7d == null || projection.data.estimated_30d == null ? (
+            <p className="text-sm text-muted-foreground">
+              Belum cukup riwayat transaksi pada tiga bulan kalender lengkap terakhir untuk membuat proyeksi.
+            </p>
+          ) : (
+            <>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm text-muted-foreground">Estimasi saldo 7 hari</dt>
+                  <dd><Money value={projection.data.estimated_7d} className="text-2xl font-semibold" /></dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Estimasi saldo 30 hari</dt>
+                  <dd><Money value={projection.data.estimated_30d} className="text-2xl font-semibold" /></dd>
+                </div>
+              </dl>
+              {projection.data.upcoming_bills.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-medium">Tagihan rutin dalam 30 hari</p>
+                  <ul className="space-y-1 text-sm">
+                    {projection.data.upcoming_bills.map((bill) => (
+                      <li key={`${bill.account_name}:${bill.merchant}:${bill.due_date}`} className="flex flex-wrap justify-between gap-x-3">
+                        <span>{bill.merchant} · {bill.account_name} · {formatDate(`${bill.due_date}T00:00:00+07:00`)}</span>
+                        <Money value={bill.estimated_amount} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Perkiraan dari rata-rata harian tiga bulan lengkap dan tagihan terkonfirmasi; bukan saldo pasti.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="text-sm text-muted-foreground" aria-live="polite">
         <p>

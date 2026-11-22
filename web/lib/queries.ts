@@ -10,6 +10,7 @@ import type {
   AccountType,
   Budget,
   Cashflow,
+  CashflowProjection,
   Category,
   CategoryRule,
   CategoryType,
@@ -108,7 +109,10 @@ export function useDecideRecurringBill() {
   return useMutation({
     mutationFn: ({ account_id, merchant, status }: Pick<RecurringBill, "account_id" | "merchant"> & { status: "confirmed" | "ignored" }) =>
       api<void>("/recurring-bills/decision", { method: "PUT", body: { account_id, merchant, status } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.recurringBills }),
+    onSuccess: () => Promise.all([
+      qc.invalidateQueries({ queryKey: keys.recurringBills }),
+      qc.invalidateQueries({ queryKey: keys.reports }),
+    ]),
     onError,
   })
 }
@@ -160,6 +164,12 @@ export const useCashflow = (dateFrom: string, dateTo: string, groupBy: "day" | "
     queryKey: [...keys.reports, "cashflow", dateFrom, dateTo, groupBy],
     queryFn: () => api<Cashflow>("/reports/cashflow", { query: { date_from: dateFrom, date_to: dateTo, group_by: groupBy } }),
     placeholderData: keepPreviousData,
+  })
+
+export const useProjection = () =>
+  useQuery({
+    queryKey: [...keys.reports, "projection"],
+    queryFn: () => api<CashflowProjection>("/reports/projection"),
   })
 
 export const useNetWorth = (init: Initial<NetWorth> = {}) =>

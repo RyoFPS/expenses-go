@@ -137,6 +137,16 @@ export interface NetWorth {
   accounts: { id: string; name: string; type: AccountType; is_active: boolean; balance: number }[]
 }
 
+export interface CashflowProjection {
+  as_of: string
+  history_from: string
+  history_to: string
+  starting_balance: number
+  estimated_7d: number | null
+  estimated_30d: number | null
+  upcoming_bills: { account_name: string; merchant: string; estimated_amount: number; due_date: string }[]
+}
+
 export interface LatestNotification {
   received_at: string | null
 }
