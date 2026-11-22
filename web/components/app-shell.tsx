@@ -40,6 +40,7 @@ const NAV = [
   { href: "/akun", label: "Akun", icon: WalletIcon },
   { href: "/kategori", label: "Kategori", icon: TagIcon },
   { href: "/laporan", label: "Laporan", icon: ChartPieSliceIcon },
+  { href: "/tutup-bulan", label: "Tutup bulan", icon: CheckSquareOffsetIcon },
   { href: "/tagihan", label: "Tagihan rutin", icon: CalendarIcon },
 ] as const
 

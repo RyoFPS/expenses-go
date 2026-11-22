@@ -1,6 +1,8 @@
 "use client"
 
 import { ArrowClockwiseIcon, CheckCircleIcon, CheckIcon, SealCheckIcon } from "@phosphor-icons/react"
+import { useSearchParams } from "next/navigation"
+import * as React from "react"
 import { toast } from "@/lib/toast"
 
 import { EmptyState, ErrorNote, ListSkeleton, PageHeader, useLookups } from "@/components/common"
@@ -10,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatDateTime } from "@/lib/format"
+import { formatDateTime, formatMonth, monthEnd } from "@/lib/format"
 import {
   useMarkReviewed,
   useRawNotifications,
@@ -21,13 +23,23 @@ import {
 } from "@/lib/queries"
 
 export default function ReviewPage() {
-  const review = useTransactions({ needs_review: true, page_size: 100 })
-  const failed = useRawNotifications("failed")
+  return <React.Suspense fallback={<ListSkeleton />}><Review /></React.Suspense>
+}
+
+function Review() {
+  const params = useSearchParams()
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get("bulan") ?? "") ? params.get("bulan")! : null
+  const dateFrom = month ? `${month}-01` : undefined
+  const dateTo = month ? monthEnd(month) : undefined
+  const [reviewPage, setReviewPage] = React.useState(1)
+  const [failedPage, setFailedPage] = React.useState(1)
+  const review = useTransactions({ needs_review: true, date_from: dateFrom, date_to: dateTo, page: reviewPage, page_size: 100 })
+  const failed = useRawNotifications("failed", dateFrom, dateTo, failedPage)
 
   return (
     <>
-      <PageHeader title="Review" description="Transaksi yang perlu dicek dan notifikasi yang gagal dibaca parser." />
-      <Tabs defaultValue="review">
+      <PageHeader title="Review" description={month ? `Pekerjaan ${formatMonth(month)}` : "Transaksi yang perlu dicek dan notifikasi yang gagal dibaca parser."} />
+      <Tabs defaultValue={params.get("tab") === "failed" ? "failed" : "review"}>
         <TabsList>
           <TabsTrigger value="review">
             Perlu dicek {!!review.data?.total && <Badge variant="secondary">{review.data.total}</Badge>}
@@ -38,13 +50,25 @@ export default function ReviewPage() {
         </TabsList>
         <TabsContent value="review" className="mt-4">
           <NeedsReview query={review} />
+          <Pager total={review.data?.total ?? 0} page={reviewPage} onChange={setReviewPage} />
         </TabsContent>
         <TabsContent value="failed" className="mt-4">
-          <FailedRaw query={failed} />
+          <FailedRaw query={failed} filtered={Boolean(month)} />
+          <Pager total={failed.data?.total ?? 0} page={failedPage} onChange={setFailedPage} />
         </TabsContent>
       </Tabs>
     </>
   )
+}
+
+function Pager({ total, page, onChange }: { total: number; page: number; onChange: (page: number) => void }) {
+  const pages = Math.max(1, Math.ceil(total / 100))
+  if (pages === 1 && page === 1) return null
+  return <nav aria-label="Halaman review" className="mt-4 flex items-center justify-between gap-2 text-sm">
+    <Button variant="outline" disabled={page <= 1} onClick={() => onChange(page - 1)}>Sebelumnya</Button>
+    <span>{page > pages ? "Daftar berubah" : `${page} / ${pages}`}</span>
+    <Button variant="outline" disabled={page >= pages} onClick={() => onChange(page + 1)}>Berikutnya</Button>
+  </nav>
 }
 
 function NeedsReview({ query }: { query: ReturnType<typeof useTransactions> }) {
@@ -89,7 +113,7 @@ function NeedsReview({ query }: { query: ReturnType<typeof useTransactions> }) {
   )
 }
 
-function FailedRaw({ query }: { query: ReturnType<typeof useRawNotifications> }) {
+function FailedRaw({ query, filtered }: { query: ReturnType<typeof useRawNotifications>; filtered: boolean }) {
   const reparse = useReparse()
   const reparseAll = useReparseAll()
 
@@ -106,7 +130,7 @@ function FailedRaw({ query }: { query: ReturnType<typeof useRawNotifications> })
 
   return (
     <div className="flex flex-col gap-3">
-      <Button
+      {!filtered && <Button
         variant="outline"
         className="self-start"
         disabled={reparseAll.isPending}
@@ -117,7 +141,7 @@ function FailedRaw({ query }: { query: ReturnType<typeof useRawNotifications> })
         }
       >
         <ArrowClockwiseIcon data-icon="inline-start" /> Parse ulang semua
-      </Button>
+      </Button>}
       <ul className="flex flex-col gap-3">
         {query.data.items.map((raw) => (
           <li key={raw.id}>

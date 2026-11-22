@@ -70,6 +70,7 @@ function Transactions() {
   const [type, setType] = useFilterState<TxType | "">((params.get("tipe") as TxType) ?? "", resetPage)
   const [dateFrom, setDateFrom] = useFilterState(params.get("dari") ?? "", resetPage)
   const [dateTo, setDateTo] = useFilterState(params.get("sampai") ?? "", resetPage)
+  const [uncategorized, setUncategorized] = useFilterState(params.get("tanpa_kategori") === "1", resetPage)
   const [search, setSearch] = useFilterState("", resetPage)
   const [showFilters, setShowFilters] = React.useState(
     Boolean(
@@ -77,7 +78,8 @@ function Transactions() {
         params.get("kategori") ||
         params.get("tipe") ||
         params.get("dari") ||
-        params.get("sampai")
+        params.get("sampai") ||
+        params.get("tanpa_kategori")
     )
   )
   const q = useDebounced(search.trim())
@@ -88,6 +90,7 @@ function Transactions() {
     type: type || undefined,
     date_from: dateFrom || undefined,
     date_to: dateTo || undefined,
+    uncategorized: uncategorized || undefined,
     q: q || undefined,
     page,
     page_size: PAGE_SIZE,
@@ -99,7 +102,7 @@ function Transactions() {
   const del = useDeleteTransaction()
   const [exporting, setExporting] = React.useState(false)
 
-  const activeFilterCount = [accountId, categoryId, type, dateFrom, dateTo].filter(Boolean).length
+  const activeFilterCount = [accountId, categoryId, type, dateFrom, dateTo, uncategorized].filter(Boolean).length
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
 
   const resetFilters = () => {
@@ -108,6 +111,7 @@ function Transactions() {
     setType("")
     setDateFrom("")
     setDateTo("")
+    setUncategorized(false)
     setSearch("")
   }
 
@@ -142,7 +146,7 @@ function Transactions() {
     <>
       <PageHeader
         title="Transaksi"
-        description={data ? `${data.total.toLocaleString("id-ID")} transaksi` : undefined}
+        description={data ? `${data.total.toLocaleString("id-ID")} transaksi${uncategorized ? " tanpa kategori" : ""}` : undefined}
         actions={
           <Button variant="outline" disabled={exporting || !data?.total} onClick={exportCsv}>
             <DownloadSimpleIcon data-icon="inline-start" />
@@ -201,7 +205,10 @@ function Transactions() {
               <OptionSelect
                 id="f-category"
                 value={categoryId}
-                onChange={setCategoryId}
+                onChange={(value) => {
+                  setCategoryId(value)
+                  if (value) setUncategorized(false)
+                }}
                 emptyLabel="Semua kategori"
                 options={lookups.categories.map((c) => ({ value: c.id, label: c.name }))}
               />
@@ -211,11 +218,24 @@ function Transactions() {
               <OptionSelect
                 id="f-type"
                 value={type}
-                onChange={(v) => setType(v as TxType | "")}
+                onChange={(v) => {
+                  setType(v as TxType | "")
+                  if (v === "transfer") setUncategorized(false)
+                }}
                 emptyLabel="Semua tipe"
                 options={(Object.keys(TX_TYPE_LABEL) as TxType[]).map((t) => ({ value: t, label: TX_TYPE_LABEL[t] }))}
               />
             </div>
+            <label className="col-span-2 flex items-center gap-2 text-sm md:col-span-5">
+              <input type="checkbox" checked={uncategorized} onChange={(event) => {
+                setUncategorized(event.target.checked)
+                if (event.target.checked) {
+                  setCategoryId("")
+                  if (type === "transfer") setType("")
+                }
+              }} />
+              Pemasukan/pengeluaran tanpa kategori
+            </label>
             {activeFilterCount > 0 && (
               <Button variant="ghost" className="col-span-2 justify-self-start md:col-span-5" onClick={resetFilters}>
                 Hapus filter
