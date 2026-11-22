@@ -94,6 +94,14 @@ export interface MonthlySummary {
   by_category: { category_id: string | null; name: string; type: CategoryType; total: number }[]
 }
 
+export interface Budget {
+  id: string
+  category_id: string
+  category_name: string
+  month: string
+  amount: number
+}
+
 export interface Cashflow {
   date_from: string
   date_to: string

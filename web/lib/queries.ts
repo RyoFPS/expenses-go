@@ -8,6 +8,7 @@ import type {
   Account,
   AccountBalance,
   AccountType,
+  Budget,
   Cashflow,
   Category,
   CategoryRule,
@@ -29,6 +30,7 @@ export const keys = {
   accounts: ["accounts"] as const,
   balance: (id: string) => ["accounts", id, "balance"] as const,
   categories: ["categories"] as const,
+  budgets: (month: string) => ["budgets", month] as const,
   rules: ["category-rules"] as const,
   transactions: (f?: TransactionFilters) => (f ? (["transactions", f] as const) : (["transactions"] as const)),
   transaction: (id: string) => ["transactions", "detail", id] as const,
@@ -79,6 +81,32 @@ export const useSummary = (month: string) =>
     queryKey: [...keys.reports, "summary", month],
     queryFn: () => api<MonthlySummary>("/reports/summary", { query: { month } }),
   })
+
+export const useBudgets = (month: string) =>
+  useQuery({
+    queryKey: keys.budgets(month),
+    queryFn: () => api<Budget[]>("/budgets", { query: { month } }),
+  })
+
+export function useSaveBudget() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, month, amount }: { categoryId: string; month: string; amount: number }) =>
+      api<Budget>(`/budgets/${categoryId}`, { method: "PUT", query: { month }, body: { amount } }),
+    onSuccess: (_data, input) => qc.invalidateQueries({ queryKey: keys.budgets(input.month) }),
+    onError,
+  })
+}
+
+export function useDeleteBudget() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, month }: { categoryId: string; month: string }) =>
+      api<void>(`/budgets/${categoryId}`, { method: "DELETE", query: { month } }),
+    onSuccess: (_data, input) => qc.invalidateQueries({ queryKey: keys.budgets(input.month) }),
+    onError,
+  })
+}
 
 export const useCashflow = (dateFrom: string, dateTo: string, groupBy: "day" | "week" | "month") =>
   useQuery({
