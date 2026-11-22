@@ -8,9 +8,11 @@ import {
 } from "@phosphor-icons/react"
 import Link from "next/link"
 
-import { CategoryBars } from "@/components/charts/category-bars"
-import { CumulativeExpense } from "@/components/charts/cumulative-expense"
-import { MiniCashflow } from "@/components/charts/mini-cashflow"
+import {
+  LazyCategoryBars,
+  LazyCumulativeExpense,
+  LazyMiniCashflow,
+} from "@/components/charts/lazy"
 import { EmptyState, ErrorNote, ListSkeleton } from "@/components/common"
 import { Money } from "@/components/money"
 import { useQuickAdd } from "@/components/quick-add"
@@ -216,7 +218,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
           </CardHeader>
           <CardContent>
             {cashflow.data ? (
-              <MiniCashflow data={cashflow.data} />
+              <LazyMiniCashflow data={cashflow.data} />
             ) : (
               <Skeleton className="aspect-video w-full rounded-2xl" />
             )}
@@ -234,7 +236,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
           ) : previousCumulative.isError ? (
             <ErrorNote error={previousCumulative.error} />
           ) : cumulative.data && previousCumulative.data ? (
-            <CumulativeExpense
+            <LazyCumulativeExpense
               current={cumulative.data}
               previous={previousCumulative.data}
               previousMonth={previousMonth}
@@ -263,7 +265,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
               <ListSkeleton rows={3} />
             ) : summary.data &&
               summary.data.by_category.some((c) => c.type === "expense") ? (
-              <CategoryBars
+              <LazyCategoryBars
                 items={summary.data.by_category}
                 type="expense"
                 limit={5}

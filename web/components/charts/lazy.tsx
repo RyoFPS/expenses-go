@@ -4,40 +4,153 @@ import dynamic from "next/dynamic"
 import * as React from "react"
 
 import { Skeleton } from "@/components/ui/skeleton"
-import type { Cashflow } from "@/lib/types"
+import type { Cashflow, MonthlySummary } from "@/lib/types"
 
-/** Recharts cukup besar: dimuat terpisah, dan baru ketika kartunya terlihat di layar. */
-const CashflowChart = dynamic(() => import("@/components/charts/cashflow-chart"), {
-  ssr: false,
-  loading: () => <Skeleton className="aspect-video w-full rounded-2xl" />,
-})
+const CashflowChart = dynamic(
+  () => import("@/components/charts/cashflow-chart"),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-full w-full rounded-2xl" />,
+  }
+)
+const MiniCashflowChart = dynamic(
+  () =>
+    import("@/components/charts/mini-cashflow").then(
+      (module) => module.MiniCashflow
+    ),
+  { ssr: false }
+)
+const CumulativeExpenseChart = dynamic(
+  () =>
+    import("@/components/charts/cumulative-expense").then(
+      (module) => module.CumulativeExpense
+    ),
+  { ssr: false }
+)
+const CategoryBarsChart = dynamic(
+  () =>
+    import("@/components/charts/category-bars").then(
+      (module) => module.CategoryBars
+    ),
+  { ssr: false }
+)
+const CategoryChangeChart = dynamic(
+  () =>
+    import("@/components/charts/category-change").then(
+      (module) => module.CategoryChange
+    ),
+  { ssr: false }
+)
 
 function useInView<T extends Element>(rootMargin = "200px") {
   const ref = React.useRef<T | null>(null)
   const [inView, setInView] = React.useState(false)
   React.useEffect(() => {
-    const el = ref.current
-    if (!el || inView) return
-    const io = new IntersectionObserver(
+    const element = ref.current
+    if (!element || inView) return
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
+        if (entries.some((entry) => entry.isIntersecting)) {
           setInView(true)
-          io.disconnect()
+          observer.disconnect()
         }
       },
       { rootMargin }
     )
-    io.observe(el)
-    return () => io.disconnect()
+    observer.observe(element)
+    return () => observer.disconnect()
   }, [inView, rootMargin])
   return [ref, inView] as const
 }
 
-export function LazyCashflowChart({ data, className }: { data: Cashflow; className?: string }) {
+function ChartGate({
+  children,
+  className,
+  skeletonClassName = "h-44 w-full rounded-2xl",
+}: {
+  children: React.ReactNode
+  className?: string
+  skeletonClassName?: string
+}) {
   const [ref, inView] = useInView<HTMLDivElement>()
   return (
     <div ref={ref} className={className}>
-      {inView ? <CashflowChart data={data} className="h-full w-full" /> : <Skeleton className="h-full w-full rounded-2xl" />}
+      {inView ? children : <Skeleton className={skeletonClassName} />}
     </div>
+  )
+}
+
+export function LazyCashflowChart({
+  data,
+  className,
+}: {
+  data: Cashflow
+  className?: string
+}) {
+  return (
+    <ChartGate
+      className={className}
+      skeletonClassName="h-full w-full rounded-2xl"
+    >
+      <CashflowChart data={data} className="h-full w-full" />
+    </ChartGate>
+  )
+}
+
+export function LazyMiniCashflow({ data }: { data: Cashflow }) {
+  return (
+    <ChartGate>
+      <MiniCashflowChart data={data} />
+    </ChartGate>
+  )
+}
+
+export function LazyCumulativeExpense({
+  current,
+  previous,
+  previousMonth,
+}: {
+  current: Cashflow
+  previous: Cashflow
+  previousMonth: string
+}) {
+  return (
+    <ChartGate>
+      <CumulativeExpenseChart
+        current={current}
+        previous={previous}
+        previousMonth={previousMonth}
+      />
+    </ChartGate>
+  )
+}
+
+export function LazyCategoryBars({
+  items,
+  type,
+  limit,
+}: {
+  items: MonthlySummary["by_category"]
+  type: "income" | "expense"
+  limit?: number
+}) {
+  return (
+    <ChartGate>
+      <CategoryBarsChart items={items} type={type} limit={limit} />
+    </ChartGate>
+  )
+}
+
+export function LazyCategoryChange({
+  current,
+  previous,
+}: {
+  current: MonthlySummary
+  previous: MonthlySummary
+}) {
+  return (
+    <ChartGate>
+      <CategoryChangeChart current={current} previous={previous} />
+    </ChartGate>
   )
 }

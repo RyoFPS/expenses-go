@@ -1,65 +1,89 @@
+"use client"
+
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts"
+
+import {
+  ChartContainer,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
 import { formatCompact, formatPeriod, formatRupiah } from "@/lib/format"
 import type { Cashflow } from "@/lib/types"
 
-/**
- * Grafik batang arus kas ringan (SVG murni, tanpa library) untuk Beranda.
- * Recharts (~100 KB) hanya dipakai di halaman Laporan agar beranda tetap cepat dimuat di HP.
- */
+const config = {
+  income: { label: "Masuk", color: "var(--income)" },
+  expense: { label: "Keluar", color: "var(--expense)" },
+} satisfies ChartConfig
+
 export function MiniCashflow({ data }: { data: Cashflow }) {
-  const points = data.points
-  const max = Math.max(1, ...points.map((p) => Math.max(p.income, p.expense)))
-  const totalIn = points.reduce((s, p) => s + p.income, 0)
-  const totalOut = points.reduce((s, p) => s + p.expense, 0)
-  const W = 300
-  const H = 120
-  const slot = W / Math.max(points.length, 1)
-  const bar = Math.max(1.5, Math.min(6, slot / 2 - 1))
-  const y = (v: number) => H - (v / max) * H
-  const ticks = [0, Math.floor(points.length / 2), points.length - 1].filter((i, idx, a) => points[i] && a.indexOf(i) === idx)
+  const rows = data.points.map((point) => ({
+    ...point,
+    label: formatPeriod(point.period, data.group_by),
+  }))
+  const ticks = [
+    ...new Set(
+      [
+        rows[0]?.label,
+        rows[Math.floor(rows.length / 2)]?.label,
+        rows.at(-1)?.label,
+      ].filter((label): label is string => Boolean(label))
+    ),
+  ]
+  const totalIn = data.points.reduce((sum, point) => sum + point.income, 0)
+  const totalOut = data.points.reduce((sum, point) => sum + point.expense, 0)
 
   return (
-    <figure className="flex flex-col gap-3">
-      <svg
-        viewBox={`0 0 ${W} ${H + 16}`}
-        className="h-auto w-full"
-        role="img"
-        aria-label={`Arus kas ${points.length} hari: masuk ${formatRupiah(totalIn)}, keluar ${formatRupiah(totalOut)}`}
-      >
-        <line x1={0} x2={W} y1={H} y2={H} className="stroke-border" strokeWidth={1} />
-        <text x={0} y={10} className="fill-muted-foreground text-[8px]">
-          {formatCompact(max)}
-        </text>
-        {points.map((p, i) => {
-          const x = i * slot + slot / 2
-          return (
-            <g key={p.period}>
-              <title>{`${formatPeriod(p.period, data.group_by)}: masuk ${formatRupiah(p.income)}, keluar ${formatRupiah(p.expense)}`}</title>
-              <rect x={x - slot / 2} y={0} width={slot} height={H} fill="transparent" />
-              {p.income > 0 && <rect x={x - bar - 0.5} y={y(p.income)} width={bar} height={H - y(p.income)} rx={1} className="fill-income" />}
-              {p.expense > 0 && <rect x={x + 0.5} y={y(p.expense)} width={bar} height={H - y(p.expense)} rx={1} className="fill-expense" />}
-            </g>
-          )
-        })}
-        {ticks.map((i) => (
-          <text
-            key={i}
-            x={i * slot + slot / 2}
-            y={H + 12}
-            textAnchor={i === 0 ? "start" : i === points.length - 1 ? "end" : "middle"}
-            className="fill-muted-foreground text-[8px]"
-          >
-            {formatPeriod(points[i].period, data.group_by)}
-          </text>
-        ))}
-      </svg>
-      <figcaption className="flex gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-income" aria-hidden /> Masuk {formatRupiah(totalIn)}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-expense" aria-hidden /> Keluar {formatRupiah(totalOut)}
-        </span>
-      </figcaption>
+    <figure
+      aria-label={`Arus kas ${data.points.length} hari: masuk ${formatRupiah(totalIn)}, keluar ${formatRupiah(totalOut)}`}
+    >
+      <ChartContainer config={config} className="h-44 w-full">
+        <BarChart
+          data={rows}
+          margin={{ left: 0, right: 4, top: 8 }}
+          accessibilityLayer
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="label"
+            ticks={ticks}
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            width={48}
+            tickFormatter={formatCompact}
+            fontSize={10}
+          />
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent
+                formatter={(value, name) =>
+                  `${config[name as keyof typeof config]?.label ?? name}: ${formatRupiah(Number(value))}`
+                }
+              />
+            }
+          />
+          <Bar
+            dataKey="income"
+            fill="var(--color-income)"
+            radius={[2, 2, 0, 0]}
+            maxBarSize={6}
+          />
+          <Bar
+            dataKey="expense"
+            fill="var(--color-expense)"
+            radius={[2, 2, 0, 0]}
+            maxBarSize={6}
+          />
+          <Legend content={<ChartLegendContent />} />
+        </BarChart>
+      </ChartContainer>
     </figure>
   )
 }

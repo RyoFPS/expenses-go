@@ -1,7 +1,16 @@
-import { Money } from "@/components/money"
+"use client"
+
+import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts"
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
+import { formatCompact, formatRupiah } from "@/lib/format"
 import type { MonthlySummary } from "@/lib/types"
 
-/** Daftar bar horizontal per kategori (HTML biasa: ringan & terbaca screen reader). */
 export function CategoryBars({
   items,
   type,
@@ -11,29 +20,70 @@ export function CategoryBars({
   type: "income" | "expense"
   limit?: number
 }) {
-  const rows = items.filter((r) => r.type === type)
+  const rows = items.filter((item) => item.type === type)
   const shown = limit ? rows.slice(0, limit) : rows
-  const max = Math.max(1, ...rows.map((r) => r.total))
-  const total = rows.reduce((s, r) => s + r.total, 0)
+  if (!shown.length) return null
+
+  const total = rows.reduce((sum, row) => sum + row.total, 0)
+  const config = {
+    total: {
+      label: type === "expense" ? "Pengeluaran" : "Pemasukan",
+      color: type === "expense" ? "var(--expense)" : "var(--income)",
+    },
+  } satisfies ChartConfig
+
   return (
-    <ul className="flex flex-col gap-3">
-      {shown.map((r) => (
-        <li key={r.category_id ?? "none"} className="flex flex-col gap-1">
-          <div className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="truncate">{r.name}</span>
-            <span className="flex shrink-0 items-baseline gap-2">
-              <span className="text-xs text-muted-foreground">{Math.round((r.total / Math.max(total, 1)) * 100)}%</span>
-              <Money value={r.total} type="neutral" className="font-medium" />
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
-            <div
-              className={type === "expense" ? "h-full rounded-full bg-expense" : "h-full rounded-full bg-income"}
-              style={{ width: `${(r.total / max) * 100}%` }}
+    <ChartContainer
+      config={config}
+      className="w-full"
+      style={{ height: Math.max(160, shown.length * 42) }}
+    >
+      <BarChart
+        data={shown.map((row) => ({
+          ...row,
+          percent: Math.round((row.total / Math.max(total, 1)) * 100),
+        }))}
+        layout="vertical"
+        margin={{ left: 0, right: 44 }}
+        barCategoryGap={10}
+        accessibilityLayer
+      >
+        <CartesianGrid horizontal={false} />
+        <XAxis type="number" hide domain={[0, (max: number) => max * 1.5]} />
+        <YAxis
+          dataKey="name"
+          type="category"
+          tickLine={false}
+          axisLine={false}
+          width={104}
+          interval={0}
+          fontSize={11}
+        />
+        <ChartTooltip
+          cursor={false}
+          content={
+            <ChartTooltipContent
+              formatter={(value, _name, item) =>
+                `${formatRupiah(Number(value))} (${item.payload.percent}%)`
+              }
             />
-          </div>
-        </li>
-      ))}
-    </ul>
+          }
+        />
+        <Bar
+          dataKey="total"
+          fill="var(--color-total)"
+          radius={[0, 4, 4, 0]}
+          maxBarSize={18}
+        >
+          <LabelList
+            dataKey="total"
+            position="right"
+            formatter={(value) => formatCompact(Number(value))}
+            fontSize={10}
+            fill="var(--muted-foreground)"
+          />
+        </Bar>
+      </BarChart>
+    </ChartContainer>
   )
 }
