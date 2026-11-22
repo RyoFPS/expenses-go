@@ -20,6 +20,7 @@ import type {
   Page,
   ParseStatus,
   RawNotification,
+  RecurringBill,
   RuleMatchType,
   SavingGoal,
   Transaction,
@@ -34,6 +35,7 @@ export const keys = {
   categories: ["categories"] as const,
   budgets: (month: string) => ["budgets", month] as const,
   savingGoals: ["saving-goals"] as const,
+  recurringBills: ["recurring-bills"] as const,
   rules: ["category-rules"] as const,
   transactions: (f?: TransactionFilters) => (f ? (["transactions", f] as const) : (["transactions"] as const)),
   transaction: (id: string) => ["transactions", "detail", id] as const,
@@ -94,6 +96,22 @@ export const useBudgets = (month: string) =>
 
 export const useSavingGoals = () =>
   useQuery({ queryKey: keys.savingGoals, queryFn: () => api<SavingGoal[]>("/saving-goals") })
+
+export const useRecurringBills = () =>
+  useQuery({
+    queryKey: keys.recurringBills,
+    queryFn: () => api<{ candidates: RecurringBill[]; confirmed: RecurringBill[] }>("/recurring-bills"),
+  })
+
+export function useDecideRecurringBill() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ account_id, merchant, status }: Pick<RecurringBill, "account_id" | "merchant"> & { status: "confirmed" | "ignored" }) =>
+      api<void>("/recurring-bills/decision", { method: "PUT", body: { account_id, merchant, status } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.recurringBills }),
+    onError,
+  })
+}
 
 export function useSaveSavingGoal() {
   const qc = useQueryClient()
@@ -181,6 +199,7 @@ function useInvalidateMoney() {
       qc.invalidateQueries({ queryKey: keys.transactions() }),
       qc.invalidateQueries({ queryKey: keys.accounts }),
       qc.invalidateQueries({ queryKey: keys.savingGoals }),
+      qc.invalidateQueries({ queryKey: keys.recurringBills }),
       qc.invalidateQueries({ queryKey: keys.reports }),
       qc.invalidateQueries({ queryKey: keys.raw() }),
     ])

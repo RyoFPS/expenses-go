@@ -5,6 +5,7 @@ from app.models.budget import Budget
 from app.models.category import Category, CategoryRule
 from app.models.listener_status import ListenerStatus
 from app.models.raw_notification import RawNotification
+from app.models.recurring_bill_decision import RecurringBillDecision
 from app.models.saving_goal import SavingGoal
 from app.models.transaction import Transaction
 
@@ -17,6 +18,7 @@ __all__ = [
     "CategoryRule",
     "ListenerStatus",
     "RawNotification",
+    "RecurringBillDecision",
     "SavingGoal",
     "Transaction",
 ]

@@ -30,6 +30,17 @@ export interface SavingGoal {
   progress_percent: number
 }
 
+export interface RecurringBill {
+  account_id: string
+  account_name: string
+  merchant: string
+  display_merchant: string
+  estimated_amount: number
+  last_date: string
+  next_date: string
+  last_transaction_id: string
+}
+
 export interface AccountBalance {
   account_id: string
   calculated: number

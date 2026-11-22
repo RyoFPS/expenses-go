@@ -20,6 +20,7 @@ EXPECTED_TABLES = {
     "category_rules",
     "budgets",
     "saving_goals",
+    "recurring_bill_decisions",
     "listener_status",
 }
 

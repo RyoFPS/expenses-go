@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, FastAPI
 
-from app.api import accounts, budgets, categories, ingest, listener_status, raw_notifications, reports, saving_goals, transactions
+from app.api import accounts, budgets, categories, ingest, listener_status, raw_notifications, recurring_bills, reports, saving_goals, transactions
 from app.core.auth import require_user
 from app.core.config import get_settings
 
@@ -31,6 +31,7 @@ for r in (
     categories.router,
     budgets.router,
     saving_goals.router,
+    recurring_bills.router,
     categories.rules_router,
     raw_notifications.router,
     reports.router,
