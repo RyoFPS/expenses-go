@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.models import Account, RawNotification, Transaction
 from app.models.enums import AccountType, ParseStatus, TransactionType
 from app.parsers import ParseError, get_parser
-from app.parsers.wallets import DanaParser, GopayParser, JagoParser
+from app.parsers.wallets import DanaParser, GopayParser, JagoParser, OvoParser
 from app.services.processing import reparse, reparse_all
 
 SAMPLES = json.loads(
@@ -18,6 +18,11 @@ SAMPLES = json.loads(
 )
 JAGO_SAMPLES = json.loads(
     (Path(__file__).parent / "fixtures" / "wallets" / "jago_qris_self_transfer.json").read_text(
+        encoding="utf-8"
+    )
+)
+OVO_SAMPLES = json.loads(
+    (Path(__file__).parent / "fixtures" / "wallets" / "ovo_qris_self_transfer.json").read_text(
         encoding="utf-8"
     )
 )
@@ -98,3 +103,48 @@ async def test_jago_reparse_matches_existing_dana_income(db_sessionmaker) -> Non
         )
         assert tx.raw_notification_id == raw_ids["com.jago.digitalBanking"]
         assert tx.counter_raw_notification_id == raw_ids["id.dana"]
+
+
+def test_observed_ovo_payment() -> None:
+    parser = get_parser(OVO_SAMPLES["ovo"]["package_name"])
+    assert isinstance(parser, OvoParser)
+    result = parser.parse(OVO_SAMPLES["ovo"]["title"], OVO_SAMPLES["ovo"]["text"])
+    assert (result.type, result.amount, result.merchant) == ("expense", 5000, "Toko Contoh, Service")
+    assert parser.parse("Rp1 bisa dapet apa? Banyak! 🤯", "") is None
+    with pytest.raises(ParseError):
+        parser.parse("OVO", "Format pembayaran yang belum dikenal")
+
+
+async def test_ovo_reparse_preserves_unrelated_dana_income(db_sessionmaker) -> None:
+    async with db_sessionmaker() as session:
+        ovo = Account(name="OVO", type=AccountType.ewallet, package_name="ovo.id")
+        dana = Account(name="DANA", type=AccountType.ewallet, package_name="id.dana")
+        session.add_all([ovo, dana])
+        times = {
+            "dana_other": datetime(2026, 11, 22, 13, 41, 31, tzinfo=UTC),
+            "ovo": datetime(2026, 11, 22, 13, 43, 48, tzinfo=UTC),
+            "dana": datetime(2026, 11, 22, 13, 43, 51, tzinfo=UTC),
+        }
+        for key, at in times.items():
+            session.add(
+                RawNotification(
+                    **OVO_SAMPLES[key], posted_at=at, content_hash=key,
+                    parse_status=ParseStatus.ignored,
+                )
+            )
+        await session.commit()
+        raw_ids = {raw.content_hash: raw.id for raw in (await session.scalars(select(RawNotification))).all()}
+        for key in ("dana_other", "dana", "ovo"):
+            assert await reparse(session, raw_ids[key]) == ParseStatus.parsed
+
+    async with db_sessionmaker() as session:
+        transactions = {tx.amount: tx for tx in (await session.scalars(select(Transaction))).all()}
+        assert set(transactions) == {4107, 5000}
+        assert transactions[4107].type == TransactionType.income
+        assert transactions[4107].raw_notification_id == raw_ids["dana_other"]
+        transfer = transactions[5000]
+        assert (transfer.type, transfer.account_id, transfer.to_account_id) == (
+            TransactionType.transfer, ovo.id, dana.id
+        )
+        assert transfer.raw_notification_id == raw_ids["ovo"]
+        assert transfer.counter_raw_notification_id == raw_ids["dana"]

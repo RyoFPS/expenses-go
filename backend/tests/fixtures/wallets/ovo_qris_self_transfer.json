@@ -1,0 +1,18 @@
+{
+  "provenance": "Raw notifications from the user's phone on 2026-11-22; merchant name anonymized without changing the sentence structure.",
+  "ovo": {
+    "package_name": "ovo.id",
+    "title": "OVO",
+    "text": "Yay, pembayaran sebesar Rp5.000 di Toko Contoh, Service telah berhasil 🥳✨"
+  },
+  "dana": {
+    "package_name": "id.dana",
+    "title": "Pembayaran Masuk",
+    "text": "Rp5.000 diterima DANA Bisnis."
+  },
+  "dana_other": {
+    "package_name": "id.dana",
+    "title": "Pembayaran Masuk",
+    "text": "Rp4.107 diterima DANA Bisnis."
+  }
+}
