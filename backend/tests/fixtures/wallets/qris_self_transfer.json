@@ -1,0 +1,18 @@
+{
+  "provenance": "Raw notifications from the user's phone on 2026-11-22; merchant name anonymized without changing the sentence structure.",
+  "gopay": {
+    "package_name": "com.gojek.gopay",
+    "title": "Pembayaran berhasil!",
+    "text": "Mantaap, kamu barusan bayar Rp11.681 ke Toko Contoh, Service."
+  },
+  "dana": {
+    "package_name": "id.dana",
+    "title": "Pembayaran Masuk",
+    "text": "Rp11.681 diterima DANA Bisnis."
+  },
+  "promo": {
+    "package_name": "com.gojek.gopay",
+    "title": "Criiing! Kamu dapet GoPay Coins 💰",
+    "text": "Cihuy, kamu dapet 11 GoPay Coins! Klik buat liat detailnya."
+  }
+}
