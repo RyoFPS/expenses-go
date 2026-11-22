@@ -20,6 +20,7 @@ import type {
   ParseStatus,
   RawNotification,
   RuleMatchType,
+  SavingGoal,
   Transaction,
   TransactionDetail,
   TransactionFilters,
@@ -31,6 +32,7 @@ export const keys = {
   balance: (id: string) => ["accounts", id, "balance"] as const,
   categories: ["categories"] as const,
   budgets: (month: string) => ["budgets", month] as const,
+  savingGoals: ["saving-goals"] as const,
   rules: ["category-rules"] as const,
   transactions: (f?: TransactionFilters) => (f ? (["transactions", f] as const) : (["transactions"] as const)),
   transaction: (id: string) => ["transactions", "detail", id] as const,
@@ -88,6 +90,31 @@ export const useBudgets = (month: string) =>
     queryFn: () => api<Budget[]>("/budgets", { query: { month } }),
   })
 
+export const useSavingGoals = () =>
+  useQuery({ queryKey: keys.savingGoals, queryFn: () => api<SavingGoal[]>("/saving-goals") })
+
+export function useSaveSavingGoal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ accountId, name, target_amount, target_date }: Omit<SavingGoal, "id" | "account_id" | "account_name" | "balance" | "remaining" | "progress_percent"> & { accountId: string }) =>
+      api<SavingGoal>(`/saving-goals/${accountId}`, {
+        method: "PUT",
+        body: { name, target_amount, target_date },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.savingGoals }),
+    onError,
+  })
+}
+
+export function useDeleteSavingGoal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (accountId: string) => api<void>(`/saving-goals/${accountId}`, { method: "DELETE" }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.savingGoals }),
+    onError,
+  })
+}
+
 export function useSaveBudget() {
   const qc = useQueryClient()
   return useMutation({
@@ -144,6 +171,7 @@ function useInvalidateMoney() {
     Promise.all([
       qc.invalidateQueries({ queryKey: keys.transactions() }),
       qc.invalidateQueries({ queryKey: keys.accounts }),
+      qc.invalidateQueries({ queryKey: keys.savingGoals }),
       qc.invalidateQueries({ queryKey: keys.reports }),
       qc.invalidateQueries({ queryKey: keys.raw() }),
     ])

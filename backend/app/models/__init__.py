@@ -4,6 +4,7 @@ from app.models.base import Base
 from app.models.budget import Budget
 from app.models.category import Category, CategoryRule
 from app.models.raw_notification import RawNotification
+from app.models.saving_goal import SavingGoal
 from app.models.transaction import Transaction
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "Category",
     "CategoryRule",
     "RawNotification",
+    "SavingGoal",
     "Transaction",
 ]
