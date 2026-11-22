@@ -110,7 +110,7 @@ function Detail({ tx }: { tx: TransactionDetail }) {
       fee: v.type === "transfer" ? (parseRupiahInput(v.fee) ?? 0) : 0,
       account_id: v.accountId,
       to_account_id: v.type === "transfer" ? v.toAccountId : null,
-      category_id: v.type === "transfer" ? null : v.categoryId || null,
+      category_id: v.categoryId || null,
       merchant: v.merchant.trim() || null,
       note: v.note.trim() || null,
       occurred_at: fromJakartaLocalInput(v.occurredAt),
@@ -195,7 +195,7 @@ function Detail({ tx }: { tx: TransactionDetail }) {
                   </Field>
                 )}
               />
-              {type === "transfer" ? (
+              {type === "transfer" && (
                 <Controller
                   control={form.control}
                   name="toAccountId"
@@ -207,24 +207,23 @@ function Detail({ tx }: { tx: TransactionDetail }) {
                     </Field>
                   )}
                 />
-              ) : (
-                <Controller
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <Field>
-                      <FieldLabel htmlFor="d-category">Kategori</FieldLabel>
-                      <OptionSelect
-                        id="d-category"
-                        value={field.value}
-                        onChange={field.onChange}
-                        emptyLabel="Tanpa kategori"
-                        options={lookups.categories.filter((c) => c.type === type).map((c) => ({ value: c.id, label: c.name }))}
-                      />
-                    </Field>
-                  )}
-                />
               )}
+              <Controller
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel htmlFor="d-category">Kategori</FieldLabel>
+                    <OptionSelect
+                      id="d-category"
+                      value={field.value}
+                      onChange={field.onChange}
+                      emptyLabel="Tanpa kategori"
+                      options={lookups.categories.filter((c) => c.type === type).map((c) => ({ value: c.id, label: c.name }))}
+                    />
+                  </Field>
+                )}
+              />
             </div>
             {type === "transfer" && (
               <Controller

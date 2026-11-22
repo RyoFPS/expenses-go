@@ -282,7 +282,6 @@ function TransactionTable({ items, onDelete }: { items: Transaction[]; onDelete:
         header: "Kategori",
         cell: ({ row }) => {
           const tx = row.original
-          if (tx.type === "transfer") return <span className="text-muted-foreground">—</span>
           return (
             <OptionSelect
               aria-label={`Kategori untuk ${txTitle(tx, lookups.accountName)}`}

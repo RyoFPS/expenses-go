@@ -3,7 +3,7 @@
 export type AccountType = "bank" | "ewallet" | "cash"
 export type TxType = "income" | "expense" | "transfer"
 export type TxSource = "notification" | "manual" | "import"
-export type CategoryType = "income" | "expense"
+export type CategoryType = "income" | "expense" | "transfer"
 export type ParseStatus = "pending" | "parsed" | "ignored" | "failed"
 export type RuleMatchType = "merchant_contains" | "regex"
 

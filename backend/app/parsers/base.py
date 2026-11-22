@@ -11,6 +11,7 @@ class ParsedTransaction(BaseModel):
     occurred_at: datetime | None = None  # fallback ke posted_at
     balance_after: int | None = None  # jika notifikasi memuat saldo
     counterpart_hint: str | None = None  # mis. nama akun tujuan untuk transfer
+    counterpart_account_type: Literal["cash"] | None = None
     # Tambahan di luar PRD (lihat docs/DECISIONS.md D-016): kategori dari app bank, mis. "Makanan".
     category_hint: str | None = None
     # Tambahan di luar PRD (D-042): keterangan untuk transaksi, mis. "Pembatalan pengeluaran ...".

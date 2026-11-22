@@ -26,7 +26,7 @@ import {
 } from "@/lib/queries"
 import type { Category, CategoryRule, CategoryType, RuleMatchType } from "@/lib/types"
 
-const TYPE_LABEL = { expense: "Pengeluaran", income: "Pemasukan" } as const
+const TYPE_LABEL = { expense: "Pengeluaran", income: "Pemasukan", transfer: "Transfer" } as const
 const MATCH_LABEL = { merchant_contains: "Merchant mengandung", regex: "Regex merchant" } as const
 
 export default function CategoriesPage() {
@@ -38,7 +38,7 @@ export default function CategoriesPage() {
     <>
       <PageHeader title="Kategori & aturan" />
       <div className="grid gap-6 lg:grid-cols-2">
-        {(["expense", "income"] as const).map((type) => {
+        {(["expense", "income", "transfer"] as const).map((type) => {
           const items = (categories.data ?? []).filter((c) => c.type === type)
           const byId = new Map(items.map((c) => [c.id, c]))
           return (
@@ -104,7 +104,7 @@ export default function CategoriesPage() {
 
 const catSchema = z.object({
   name: z.string().trim().min(1, "Isi nama").max(100),
-  type: z.enum(["income", "expense"]),
+  type: z.enum(["income", "expense", "transfer"]),
   color: z.string(),
   parentId: z.string(),
 })
@@ -350,7 +350,7 @@ function RuleDialog({
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="Pilih kategori"
-                  options={categories.map((c) => ({ value: c.id, label: `${c.name} (${TYPE_LABEL[c.type]})` }))}
+                  options={categories.filter((c) => c.type !== "transfer").map((c) => ({ value: c.id, label: `${c.name} (${TYPE_LABEL[c.type]})` }))}
                 />
                 <FieldError errors={[fieldState.error]} />
               </Field>

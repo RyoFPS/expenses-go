@@ -4,6 +4,7 @@ Pola diambil dari notifikasi asli (tests/fixtures/bca/). Judul "Catatan Finansia
     Pengeluaran sebesar IDR 52,760.00 di kategori Pembayaran.
     Pemasukan sebesar IDR 73,000.00 dari INTI**RI ****SIH A di kategori Transfer Rekening.
     Pengeluaran sebesar IDR 10.00 di kategori Pendidikan yang dilakukan tanggal 21 November 2026 dibatalkan.
+    Pengeluaran sebesar IDR 50,000.00 di kategori Uang Tunai.
 
 Notifikasi ini tidak memuat waktu transaksi, merchant pengeluaran, maupun saldo.
 Pembatalan pengeluaran (mis. merchant QRIS tidak ditemukan; uang tidak terpotong) dicatat sebagai pemasukan
@@ -58,7 +59,9 @@ class BcaParser:
             raise ParseError("format pembatalan 'Catatan Finansial' myBCA belum dikenali")
 
         if m := _EXPENSE.fullmatch(body):
-            tx_type, sender = "expense", None
+            sender = None
+            cash_withdrawal = _clean(m.group("category")) == "Uang Tunai"
+            tx_type = "transfer" if cash_withdrawal else "expense"
         elif m := _INCOME.fullmatch(body):
             tx_type, sender = "income", _clean(m.group("sender"))
         else:
@@ -70,6 +73,7 @@ class BcaParser:
             amount=amount.rupiah,
             merchant=sender,
             counterpart_hint=sender,
-            category_hint=_clean(m.group("category")),
+            counterpart_account_type="cash" if tx_type == "transfer" else None,
+            category_hint="Tarik Tunai" if tx_type == "transfer" else _clean(m.group("category")),
             confidence=0.95 if amount.exact else 0.5,
         )

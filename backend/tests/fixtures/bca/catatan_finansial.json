@@ -1,7 +1,7 @@
 {
   "source": "myBCA",
   "package_name": "com.bca.mybca.omni.android",
-  "provenance": "Notifikasi asli dari HP pengguna, ditranskripsi dari screenshot pada 2026-11-21. Spasi/baris baru di teks asli (EXTRA_TEXT) mungkin sedikit berbeda karena teks di layar terbungkus (wrap). package_name dikonfirmasi pengguna. Kasus bca_real_* diambil dari raw_notifications produksi (HP pengguna) pada 2026-11-21: pengeluaran QRIS Rp10 yang dibatalkan karena merchant tidak ditemukan (uang tidak terpotong), lalu pengeluaran Rp10 yang berhasil.",
+  "provenance": "Notifikasi asli dari HP pengguna, ditranskripsi dari screenshot pada 2026-11-21. Spasi/baris baru di teks asli (EXTRA_TEXT) mungkin sedikit berbeda karena teks di layar terbungkus (wrap). package_name dikonfirmasi pengguna. Kasus bca_real_* diambil dari raw_notifications produksi (HP pengguna) pada 2026-11-21: pengeluaran QRIS Rp10 yang dibatalkan karena merchant tidak ditemukan (uang tidak terpotong), lalu pengeluaran Rp10 yang berhasil. Kasus bca_real_cash_withdrawal diambil dari raw_notifications produksi pada 2026-11-22.",
   "cases": [
     {
       "id": "bca_expense_tagihan_rutin",
@@ -90,6 +90,18 @@
         "amount": 10,
         "merchant": null,
         "category_hint": "Tagihan Rutin"
+      }
+    },
+    {
+      "id": "bca_real_cash_withdrawal",
+      "title": "Catatan Finansial",
+      "text": "Pengeluaran sebesar IDR 50,000.00 di kategori Uang Tunai.",
+      "expected": {
+        "type": "transfer",
+        "amount": 50000,
+        "merchant": null,
+        "category_hint": "Tarik Tunai",
+        "counterpart_account_type": "cash"
       }
     }
   ]

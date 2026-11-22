@@ -2,7 +2,7 @@
 
 Catatan PRD §10 (minimal kasus per parser):
 - pemasukan, pengeluaran: dari fixture asli.
-- transfer: belum ada contoh asli -> tidak diuji (top up ditangani transfer_matcher).
+- transfer: tarik tunai dari notifikasi asli; top up tetap ditangani transfer_matcher.
 - non-transaksi: hanya diuji perilaku "judul lain -> None"; tidak mengarang teks promo BCA.
 - format nominal berbeda: fixture asli hanya IDR x,xxx.00; format lain diuji di test_amount.py.
 """
@@ -35,6 +35,7 @@ def test_fixture_parsed_as_expected(case: dict) -> None:
     assert result.amount == exp["amount"]
     assert result.merchant == exp["merchant"]
     assert result.category_hint == exp["category_hint"]
+    assert result.counterpart_account_type == exp.get("counterpart_account_type")
     assert result.note == exp.get("note")
     assert result.occurred_at is None  # tidak ada waktu di teks -> pakai posted_at
     assert result.balance_after is None

@@ -37,8 +37,6 @@ async def _validate(session: AsyncSession, data: dict) -> None:
             raise unprocessable("to_account_id harus berbeda dari account_id")
         if await session.get(Account, to_account_id) is None:
             raise unprocessable("to_account_id tidak ditemukan")
-        if data.get("category_id") is not None:
-            raise unprocessable("Transfer tidak memakai kategori")
     else:
         if to_account_id is not None:
             raise unprocessable("to_account_id hanya untuk transfer")

@@ -7,7 +7,7 @@ Urutan:
    Rule hanya berlaku jika tipe kategorinya sesuai tipe transaksi (income/expense).
 2. Fallback `category_hint` dari parser (mis. kategori myBCA "Makanan") dicocokkan ke nama
    kategori yang sudah ada (case-insensitive, tipe sama).
-Transfer tidak dikategorikan otomatis.
+Transfer hanya memakai category_hint, bukan category_rules.
 """
 
 import logging
@@ -41,19 +41,18 @@ async def pick_category(
     merchant: str | None,
     category_hint: str | None = None,
 ) -> uuid.UUID | None:
-    if tx_type == TransactionType.transfer:
-        return None
     cat_type = CategoryType(tx_type.value)
 
-    rules = await session.scalars(
-        select(CategoryRule)
-        .join(Category, Category.id == CategoryRule.category_id)
-        .where(Category.type == cat_type)
-        .order_by(CategoryRule.priority.desc(), CategoryRule.id)
-    )
-    for rule in rules:
-        if rule_matches(rule, merchant):
-            return rule.category_id
+    if tx_type != TransactionType.transfer:
+        rules = await session.scalars(
+            select(CategoryRule)
+            .join(Category, Category.id == CategoryRule.category_id)
+            .where(Category.type == cat_type)
+            .order_by(CategoryRule.priority.desc(), CategoryRule.id)
+        )
+        for rule in rules:
+            if rule_matches(rule, merchant):
+                return rule.category_id
 
     if category_hint:
         return await session.scalar(

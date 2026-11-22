@@ -281,3 +281,15 @@ Data asli produksi (21 Nov 2026) memperlihatkan notifikasi "Catatan Finansial":
 Tidak menghapus pengeluaran asli karena raw tanpa transaksi akan dibuat ulang oleh reparse (D-019).
 Varian "dibatalkan" lain yang belum pernah terlihat → `ParseError` (direview). `ParsedTransaction` mendapat field
 opsional `note`.
+
+### D-043: Tarik tunai myBCA
+Notifikasi asli 22 Nov 2026 berkategori "Uang Tunai" dicatat sebagai transfer ke satu akun cash aktif.
+Jika akun cash aktif tidak ada atau lebih dari satu, catat sebagai pengeluaran dengan `needs_review=true`
+agar tujuan tidak dipilih sembarang. Transaksi lama yang sudah `parsed` perlu dikoreksi terarah karena reparse
+tidak menimpa transaksi yang ada (D-019).
+
+### D-044: Kategori transfer
+Kategori bertipe `transfer` dapat disimpan pada transaksi transfer dan dipakai untuk filter, tetapi tidak
+menambah pemasukan atau pengeluaran di laporan. Migrasi membuat kategori transfer "Tarik Tunai" dan
+mengaitkan transaksi tarik tunai BCA yang sudah ada. Notifikasi BCA berkategori "Uang Tunai" berikutnya
+memakai kategori tersebut. Category rules tetap hanya untuk pemasukan dan pengeluaran.

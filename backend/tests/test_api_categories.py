@@ -36,7 +36,7 @@ async def test_delete_category_uncategorizes_transactions_and_removes_rules(clie
     "body",
     [
         {"name": "", "type": "expense"},
-        {"name": "X", "type": "transfer"},
+        {"name": "X", "type": "unknown"},
         {"name": "X", "type": "expense", "color": "red"},
         {"name": "X", "type": "expense", "parent_id": str(uuid.uuid4())},
     ],
@@ -80,6 +80,15 @@ async def test_rule_crud_and_validation(client) -> None:
 
     assert (await client.delete(f"{API}/category-rules/{rule['id']}")).status_code == 204
     assert (await client.get(f"{API}/category-rules")).json() == []
+
+
+async def test_transfer_category_is_not_a_merchant_rule(client) -> None:
+    category = await create_category(client, "Tarik Tunai", "transfer")
+    resp = await client.post(
+        f"{API}/category-rules",
+        json={"match_type": "merchant_contains", "pattern": "cash", "category_id": category["id"]},
+    )
+    assert resp.status_code == 422
 
 
 async def test_apply_rules_only_to_uncategorized(client) -> None:

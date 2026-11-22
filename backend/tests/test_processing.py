@@ -86,9 +86,11 @@ async def accounts(db_sessionmaker: async_sessionmaker[AsyncSession]) -> dict[st
         bank = Account(name="Bank Test", type=AccountType.bank, package_name=BANK_PKG)
         wallet = Account(name="Wallet Test", type=AccountType.ewallet, package_name=WALLET_PKG)
         bca = Account(name="BCA", type=AccountType.bank, package_name=BCA["package_name"])
-        s.add_all([bank, wallet, bca])
+        cash = Account(name="Cash", type=AccountType.cash)
+        cash_category = Category(name="Tarik Tunai", type=CategoryType.transfer)
+        s.add_all([bank, wallet, bca, cash, cash_category])
         await s.commit()
-        return {"bank": bank.id, "wallet": wallet.id, "bca": bca.id}
+        return {"bank": bank.id, "wallet": wallet.id, "bca": bca.id, "cash": cash.id}
 
 
 async def post(client: httpx.AsyncClient, payload: dict) -> str:
@@ -141,6 +143,40 @@ async def test_bca_category_hint_maps_to_existing_category(client, db_sessionmak
     await post(client, notif(case["text"], pkg=BCA["package_name"], title=case["title"]))
     [tx] = await all_tx(db_sessionmaker)
     assert tx.category_id == makanan.id
+
+
+async def test_bca_cash_withdrawal_moves_money_without_expense(client, db_sessionmaker, accounts) -> None:
+    case = next(c for c in BCA["cases"] if c["id"] == "bca_real_cash_withdrawal")
+    raw_id = await post(client, notif(case["text"], pkg=BCA["package_name"], title=case["title"]))
+    [tx] = await all_tx(db_sessionmaker)
+    async with db_sessionmaker() as s:
+        category = await s.get(Category, tx.category_id)
+    assert (category.name, category.type) == ("Tarik Tunai", CategoryType.transfer)
+    assert (tx.type, tx.account_id, tx.to_account_id, tx.category_id, tx.needs_review) == (
+        TransactionType.transfer, accounts["bca"], accounts["cash"], category.id, False
+    )
+    assert str(tx.raw_notification_id) == raw_id
+    bank = (await client.get(f"/api/v1/accounts/{accounts['bca']}/balance")).json()
+    cash = (await client.get(f"/api/v1/accounts/{accounts['cash']}/balance")).json()
+    summary = (await client.get("/api/v1/reports/summary", params={"month": "2026-11"})).json()
+    assert (bank["calculated"], cash["calculated"]) == (-50_000, 50_000)
+    assert (summary["income"], summary["expense"], summary["net"]) == (0, 0, 0)
+    filtered = (await client.get("/api/v1/transactions", params={"category_id": str(category.id)})).json()
+    assert [item["id"] for item in filtered["items"]] == [str(tx.id)]
+
+
+@pytest.mark.parametrize("cash_count", [0, 2])
+async def test_bca_cash_withdrawal_without_unique_cash_needs_review(
+    client, db_sessionmaker, cash_count
+) -> None:
+    async with db_sessionmaker() as s:
+        s.add(Account(name="BCA", type=AccountType.bank, package_name=BCA["package_name"]))
+        s.add_all(Account(name=f"Cash {i}", type=AccountType.cash) for i in range(cash_count))
+        await s.commit()
+    case = next(c for c in BCA["cases"] if c["id"] == "bca_real_cash_withdrawal")
+    await post(client, notif(case["text"], pkg=BCA["package_name"], title=case["title"]))
+    [tx] = await all_tx(db_sessionmaker)
+    assert (tx.type, tx.to_account_id, tx.needs_review) == (TransactionType.expense, None, True)
 
 
 # --- status raw -------------------------------------------------------------

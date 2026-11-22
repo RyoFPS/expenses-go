@@ -65,7 +65,6 @@ function NeedsReview({ query }: { query: ReturnType<typeof useTransactions> }) {
             <CardContent className="flex flex-col gap-3">
               <TransactionRow tx={tx} />
               <div className="flex flex-wrap items-center gap-2">
-                {tx.type !== "transfer" && (
                   <OptionSelect
                     aria-label="Kategori"
                     value={tx.category_id ?? ""}
@@ -74,7 +73,6 @@ function NeedsReview({ query }: { query: ReturnType<typeof useTransactions> }) {
                     onChange={(v) => update.mutate({ id: tx.id, category_id: v || null })}
                     className="w-48"
                   />
-                )}
                 <Button
                   variant="secondary"
                   disabled={mark.isPending}

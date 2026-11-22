@@ -15,7 +15,8 @@ async def setup(client):
     wallet = await create_account(client, "Wallet", type="ewallet")
     makan = await create_category(client, "Makan")
     gaji = await create_category(client, "Gaji", "income")
-    return {"bank": bank, "wallet": wallet, "makan": makan, "gaji": gaji}
+    tarik_tunai = await create_category(client, "Tarik Tunai Lain", "transfer")
+    return {"bank": bank, "wallet": wallet, "makan": makan, "gaji": gaji, "tarik_tunai": tarik_tunai}
 
 
 # --- create ---------------------------------------------------------------
@@ -38,7 +39,7 @@ async def test_manual_cash_entry_defaults(client, setup) -> None:
         ({"type": "transfer", "to_account": "bank"}, "berbeda"),
         ({"type": "expense", "fee": 1000}, "fee"),
         ({"type": "expense", "category": "gaji"}, "Kategori bertipe income"),
-        ({"type": "transfer", "to_account": "wallet", "category": "makan"}, "Transfer tidak memakai kategori"),
+        ({"type": "transfer", "to_account": "wallet", "category": "makan"}, "Kategori bertipe expense"),
         ({"type": "expense", "account_id": str(uuid.uuid4())}, "account_id tidak ditemukan"),
         ({"type": "expense", "category_id": str(uuid.uuid4())}, "category_id tidak ditemukan"),
     ],
@@ -142,6 +143,20 @@ async def test_patch_category_inline(client, setup) -> None:
     assert resp.status_code == 200 and resp.json()["category_id"] == setup["makan"]["id"]
     resp = await client.patch(f"{API}/transactions/{tx['id']}", json={"category_id": setup["gaji"]["id"]})
     assert resp.status_code == 422
+
+
+async def test_transfer_category_can_be_saved_and_filtered(client, setup) -> None:
+    tx = await create_tx(
+        client, setup["bank"], "transfer", 50_000,
+        to_account_id=setup["wallet"], category_id=setup["tarik_tunai"]["id"],
+    )
+    assert tx["category_id"] == setup["tarik_tunai"]["id"]
+    filtered = (await client.get(
+        f"{API}/transactions", params={"category_id": setup["tarik_tunai"]["id"]}
+    )).json()
+    assert [item["id"] for item in filtered["items"]] == [tx["id"]]
+    resp = await client.patch(f"{API}/transactions/{tx['id']}", json={"type": "expense"})
+    assert resp.status_code == 200 and resp.json()["category_id"] is None
 
 
 async def test_patch_type_change_clears_incompatible_fields(client, setup) -> None:

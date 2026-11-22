@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Account, BalanceSnapshot, RawNotification, Transaction
-from app.models.enums import ParseStatus, TransactionSource, TransactionType
+from app.models.enums import AccountType, ParseStatus, TransactionSource, TransactionType
 from app.parsers import ParsedTransaction, ParseError, get_parser
 from app.services.categorize import pick_category
 from app.services.dedup import dedup_hash
@@ -65,6 +65,17 @@ async def _account_for(session: AsyncSession, package_name: str) -> Account:
 async def _resolve_transfer_target(
     session: AsyncSession, parsed: ParsedTransaction, source: Account
 ) -> uuid.UUID | None:
+    if parsed.counterpart_account_type == "cash":
+        targets = (
+            await session.scalars(
+                select(Account.id).where(
+                    Account.type == AccountType.cash,
+                    Account.is_active.is_(True),
+                    Account.id != source.id,
+                )
+            )
+        ).all()
+        return targets[0] if len(targets) == 1 else None
     if not parsed.counterpart_hint:
         return None
     return await session.scalar(
@@ -85,11 +96,13 @@ async def _create_transaction(
 
     tx_type = TransactionType(parsed.type)
     to_account_id = None
+    needs_review = parsed.confidence < REVIEW_THRESHOLD
     if tx_type == TransactionType.transfer:
         to_account_id = await _resolve_transfer_target(session, parsed, account)
         if to_account_id is None:
             # Transfer ke pihak luar dicatat sebagai pengeluaran (D-002).
             tx_type = TransactionType.expense
+            needs_review = needs_review or parsed.counterpart_account_type is not None
 
     category_id = await pick_category(session, tx_type, parsed.merchant, parsed.category_hint)
     values = {
@@ -105,7 +118,7 @@ async def _create_transaction(
         "source": TransactionSource.notification,
         "raw_notification_id": raw.id,
         "dedup_hash": dedup_hash(account.id, tx_type, parsed.amount, parsed.merchant, occurred_at),
-        "needs_review": parsed.confidence < REVIEW_THRESHOLD,
+        "needs_review": needs_review,
     }
     tx_id = await session.scalar(
         insert(Transaction)

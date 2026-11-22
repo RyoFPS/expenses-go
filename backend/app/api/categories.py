@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import SessionDep, get_or_404, unprocessable
 from app.models import Category, CategoryRule
+from app.models.enums import CategoryType
 from app.schemas.category import (
     ApplyRulesResult,
     CategoryCreate,
@@ -92,8 +93,11 @@ async def delete_category(category_id: uuid.UUID, session: SessionDep) -> Respon
 
 
 async def _ensure_category(session: AsyncSession, category_id: uuid.UUID) -> None:
-    if await session.get(Category, category_id) is None:
+    category = await session.get(Category, category_id)
+    if category is None:
         raise unprocessable("category_id tidak ditemukan")
+    if category.type == CategoryType.transfer:
+        raise unprocessable("Aturan otomatis tidak berlaku untuk kategori transfer")
 
 
 @rules_router.get("", response_model=list[CategoryRuleOut])

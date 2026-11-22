@@ -12,6 +12,7 @@ class AccountType(enum.StrEnum):
 class CategoryType(enum.StrEnum):
     income = "income"
     expense = "expense"
+    transfer = "transfer"
 
 
 class ParseStatus(enum.StrEnum):
