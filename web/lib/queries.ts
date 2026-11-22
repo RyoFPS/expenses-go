@@ -17,6 +17,7 @@ import type {
   LatestNotification,
   ListenerStatus,
   MonthlySummary,
+  MonthClose,
   NetWorth,
   Page,
   ParseStatus,
@@ -43,7 +44,8 @@ export const keys = {
   reports: ["reports"] as const,
   latestNotification: ["reports", "latest-notification"] as const,
   listenerStatus: ["listener-status"] as const,
-  raw: (status?: ParseStatus) => (status ? (["raw", status] as const) : (["raw"] as const)),
+  raw: (status?: ParseStatus, dateFrom?: string, dateTo?: string, page?: number) =>
+    status ? (["raw", status, dateFrom, dateTo, page] as const) : (["raw"] as const),
 }
 
 // --- queries ----------------------------------------------------------------
@@ -87,6 +89,12 @@ export const useSummary = (month: string) =>
   useQuery({
     queryKey: [...keys.reports, "summary", month],
     queryFn: () => api<MonthlySummary>("/reports/summary", { query: { month } }),
+  })
+
+export const useMonthClose = (month: string) =>
+  useQuery({
+    queryKey: [...keys.reports, "month-close", month],
+    queryFn: () => api<MonthClose>("/reports/month-close", { query: { month } }),
   })
 
 export const useBudgets = (month: string) =>
@@ -189,10 +197,12 @@ export const useListenerStatus = () =>
     refetchInterval: 30_000,
   })
 
-export const useRawNotifications = (status: ParseStatus) =>
+export const useRawNotifications = (status: ParseStatus, dateFrom?: string, dateTo?: string, page = 1) =>
   useQuery({
-    queryKey: keys.raw(status),
-    queryFn: () => api<Page<RawNotification>>("/raw-notifications", { query: { parse_status: status, page_size: 100 } }),
+    queryKey: keys.raw(status, dateFrom, dateTo, page),
+    queryFn: () => api<Page<RawNotification>>("/raw-notifications", {
+      query: { parse_status: status, date_from: dateFrom, date_to: dateTo, page, page_size: 100 },
+    }),
   })
 
 // --- mutations ----------------------------------------------------------------

@@ -1,10 +1,12 @@
 import uuid
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select
 
 from app.api.deps import PageDep, SessionDep, get_or_404
+from app.core.timeutil import day_end_exclusive_utc, day_start_utc
 from app.models import RawNotification
 from app.models.enums import ParseStatus
 from app.schemas.common import Page
@@ -20,12 +22,18 @@ async def list_raw_notifications(
     pg: PageDep,
     parse_status: ParseStatus | None = None,
     package_name: Annotated[str | None, Query(max_length=255)] = None,
+    date_from: Annotated[date | None, Query(description="Tanggal notifikasi WIB, inklusif")] = None,
+    date_to: Annotated[date | None, Query(description="Tanggal notifikasi WIB, inklusif")] = None,
 ) -> dict:
     conds = []
     if parse_status is not None:
         conds.append(RawNotification.parse_status == parse_status)
     if package_name is not None:
         conds.append(RawNotification.package_name == package_name)
+    if date_from is not None:
+        conds.append(RawNotification.posted_at >= day_start_utc(date_from))
+    if date_to is not None:
+        conds.append(RawNotification.posted_at < day_end_exclusive_utc(date_to))
     total = await session.scalar(select(func.count()).select_from(RawNotification).where(*conds))
     items = await session.scalars(
         select(RawNotification)

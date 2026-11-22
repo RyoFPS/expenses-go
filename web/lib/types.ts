@@ -117,6 +117,14 @@ export interface MonthlySummary {
   by_category: { category_id: string | null; name: string; type: CategoryType; total: number }[]
 }
 
+export interface MonthClose {
+  month: string
+  needs_review: number
+  failed_notifications: number
+  uncategorized: number
+  reconciliation: { account_id: string; name: string; observed_at: string | null; diff: number | null }[]
+}
+
 export interface Budget {
   id: string
   category_id: string
@@ -169,6 +177,7 @@ export interface TransactionFilters {
   date_to?: string
   q?: string
   needs_review?: boolean
+  uncategorized?: boolean
   page?: number
   page_size?: number
 }

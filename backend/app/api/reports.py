@@ -2,13 +2,22 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, unprocessable
-from app.core.timeutil import today_jakarta
-from app.models import RawNotification
-from app.schemas.report import Cashflow, CashflowProjection, LatestNotification, MonthlySummary, NetWorth
+from app.core.timeutil import month_bounds_utc, today_jakarta
+from app.models import Account, RawNotification, Transaction
+from app.models.enums import ParseStatus, TransactionType
+from app.schemas.report import (
+    Cashflow,
+    CashflowProjection,
+    LatestNotification,
+    MonthClose,
+    MonthlySummary,
+    NetWorth,
+)
 from app.services import projection, reports
+from app.services.balance import balance_status
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -29,6 +38,50 @@ async def summary(
     else:
         year, mon = int(month[:4]), int(month[5:])
     return await reports.monthly_summary(session, year, mon)
+
+
+@router.get("/month-close", response_model=MonthClose)
+async def month_close(
+    session: SessionDep,
+    month: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", description="YYYY-MM (WIB)")],
+) -> dict:
+    year, mon = int(month[:4]), int(month[5:])
+    start, end = month_bounds_utc(year, mon)
+    tx_range = (Transaction.occurred_at >= start, Transaction.occurred_at < end)
+    raw_range = (RawNotification.posted_at >= start, RawNotification.posted_at < end)
+    needs_review = await session.scalar(
+        select(func.count()).select_from(Transaction).where(*tx_range, Transaction.needs_review.is_(True))
+    )
+    uncategorized = await session.scalar(
+        select(func.count()).select_from(Transaction).where(
+            *tx_range,
+            Transaction.category_id.is_(None),
+            Transaction.type.in_([TransactionType.income, TransactionType.expense]),
+        )
+    )
+    failed = await session.scalar(
+        select(func.count()).select_from(RawNotification).where(
+            *raw_range, RawNotification.parse_status == ParseStatus.failed
+        )
+    )
+    accounts = (await session.scalars(select(Account).order_by(Account.name))).all()
+    reconciliation = []
+    for account in accounts:
+        status = await balance_status(session, account.id)
+        snapshot = status["last_snapshot"]
+        reconciliation.append({
+            "account_id": account.id,
+            "name": account.name,
+            "observed_at": snapshot.observed_at if snapshot else None,
+            "diff": status["diff"],
+        })
+    return {
+        "month": month,
+        "needs_review": needs_review,
+        "failed_notifications": failed,
+        "uncategorized": uncategorized,
+        "reconciliation": reconciliation,
+    }
 
 
 @router.get("/cashflow", response_model=Cashflow)

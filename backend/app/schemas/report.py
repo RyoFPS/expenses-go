@@ -23,6 +23,21 @@ class MonthlySummary(BaseModel):
     by_category: list[CategoryTotal] = Field(description="Hanya transaksi income/expense, tanpa biaya transfer")
 
 
+class ReconciliationStatus(BaseModel):
+    account_id: uuid.UUID
+    name: str
+    observed_at: datetime | None
+    diff: int | None
+
+
+class MonthClose(BaseModel):
+    month: str
+    needs_review: int
+    failed_notifications: int
+    uncategorized: int
+    reconciliation: list[ReconciliationStatus]
+
+
 class CashflowPoint(BaseModel):
     period: date = Field(description="Awal periode (WIB); minggu dimulai Senin")
     income: int

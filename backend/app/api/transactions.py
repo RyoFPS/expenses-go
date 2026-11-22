@@ -62,6 +62,7 @@ async def list_transactions(
     date_to: Annotated[date | None, Query(description="Tanggal WIB, inklusif")] = None,
     q: Annotated[str | None, Query(max_length=100, description="Cari di merchant & catatan")] = None,
     needs_review: bool | None = None,
+    uncategorized: bool | None = None,
 ) -> dict:
     conds = []
     if account_id is not None:
@@ -79,6 +80,11 @@ async def list_transactions(
         conds.append(or_(Transaction.merchant.ilike(like), Transaction.note.ilike(like)))
     if needs_review is not None:
         conds.append(Transaction.needs_review.is_(needs_review))
+    if uncategorized:
+        conds.extend((
+            Transaction.category_id.is_(None),
+            Transaction.type.in_([TransactionType.income, TransactionType.expense]),
+        ))
 
     total = await session.scalar(select(func.count()).select_from(Transaction).where(*conds))
     items = await session.scalars(
