@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -227,9 +228,9 @@ function Transactions() {
               />
             </div>
             <label className="col-span-2 flex items-center gap-2 text-sm md:col-span-5">
-              <input type="checkbox" checked={uncategorized} onChange={(event) => {
-                setUncategorized(event.target.checked)
-                if (event.target.checked) {
+              <Checkbox checked={uncategorized} onCheckedChange={(checked) => {
+                setUncategorized(checked === true)
+                if (checked === true) {
                   setCategoryId("")
                   if (type === "transfer") setType("")
                 }
