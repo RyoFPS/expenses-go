@@ -51,6 +51,7 @@ def detect_recurring_bills(transactions: list[Transaction]) -> list[dict]:
             "merchant": merchant,
             "display_merchant": matches[-1].merchant.strip(),
             "estimated_amount": estimate,
+            "anchor_day": anchor,
             "last_date": matches[-1].occurred_at.astimezone(JAKARTA).date(),
             "next_date": next_date,
             "last_transaction_id": matches[-1].id,
