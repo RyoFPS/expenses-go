@@ -2,6 +2,7 @@
 
 import {
   ChartPieSliceIcon,
+  CalendarIcon,
   CheckSquareOffsetIcon,
   DotsThreeCircleIcon,
   HouseIcon,
@@ -39,6 +40,7 @@ const NAV = [
   { href: "/akun", label: "Akun", icon: WalletIcon },
   { href: "/kategori", label: "Kategori", icon: TagIcon },
   { href: "/laporan", label: "Laporan", icon: ChartPieSliceIcon },
+  { href: "/tagihan", label: "Tagihan rutin", icon: CalendarIcon },
 ] as const
 
 function isActive(pathname: string, href: string) {
@@ -232,7 +234,7 @@ function BottomLink({
 
 /**
  * Menu "Lainnya" di navigasi bawah. Sengaja dibuat sebagai disclosure ringan (bukan DropdownMenu
- * + floating-ui ±50 KB) karena dimuat di setiap halaman mobile dan hanya berisi 3 tautan.
+ * + floating-ui ±50 KB) karena dimuat di setiap halaman mobile dan hanya berisi beberapa tautan.
  */
 function MoreMenu({ pathname }: { pathname: string }) {
   const more = NAV.slice(3)
