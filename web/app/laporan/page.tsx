@@ -9,6 +9,7 @@ import {
   LazyCashflowChart,
 } from "@/components/charts/lazy"
 import { ErrorNote, ListSkeleton, PageHeader } from "@/components/common"
+import { BudgetList } from "@/components/budget-list"
 import { Money } from "@/components/money"
 import { MonthPicker } from "@/components/month-picker"
 import { Button } from "@/components/ui/button"
@@ -99,6 +100,7 @@ export default function ReportsPage() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <BudgetList month={month} />
         <Card>
           <CardHeader>
             <CardTitle>Harian · {formatMonth(month)}</CardTitle>
