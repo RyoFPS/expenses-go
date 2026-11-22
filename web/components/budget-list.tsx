@@ -21,6 +21,7 @@ export function BudgetList({ month }: { month: string }) {
   const summary = useSummary(month)
   const save = useSaveBudget()
   const remove = useDeleteBudget()
+  const budgetItems = budgets.data ?? []
   const expenseCategories = categories.data?.filter((category) => category.type === "expense") ?? []
   const [categoryId, setCategoryId] = React.useState("")
   const [amount, setAmount] = React.useState("")
@@ -58,7 +59,7 @@ export function BudgetList({ month }: { month: string }) {
           <ErrorNote error={summary.error} />
         ) : (
           <>
-            {budgets.data.length === 0 && (
+            {budgetItems.length === 0 && (
               <p className="text-sm text-muted-foreground">
                 Belum ada anggaran untuk bulan ini. Pilih kategori dan tetapkan batasnya.
               </p>
@@ -98,7 +99,7 @@ export function BudgetList({ month }: { month: string }) {
                 {editing ? "Simpan perubahan" : "Atur anggaran"}
               </Button>
             </form>
-            {budgets.data.map((budget) => {
+            {budgetItems.map((budget) => {
               const used = spending.get(budget.category_id) ?? 0
               const remaining = budget.amount - used
               const exceeded = used > budget.amount
