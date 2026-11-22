@@ -9,6 +9,7 @@ import {
 import Link from "next/link"
 
 import { CategoryBars } from "@/components/charts/category-bars"
+import { CumulativeExpense } from "@/components/charts/cumulative-expense"
 import { MiniCashflow } from "@/components/charts/mini-cashflow"
 import { EmptyState, ErrorNote, ListSkeleton } from "@/components/common"
 import { Money } from "@/components/money"
@@ -17,9 +18,11 @@ import { TransactionRow } from "@/components/transaction-row"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { previousComparableEnd } from "@/lib/expense-charts"
 import {
   ACCOUNT_TYPE_LABEL,
   addDays,
+  addMonths,
   formatMonth,
   jakartaDate,
   jakartaMonth,
@@ -43,10 +46,18 @@ export interface DashboardInitial {
 export function Dashboard({ initial }: { initial?: DashboardInitial }) {
   const month = jakartaMonth()
   const today = jakartaDate()
+  const previousMonth = addMonths(month, -1)
+  const previousEnd = previousComparableEnd(today)
   const netWorth = useNetWorth({ initialData: initial?.netWorth ?? undefined })
   const accounts = useAccounts({ initialData: initial?.accounts ?? undefined })
   const summary = useSummary(month)
   const cashflow = useCashflow(addDays(today, -29), today, "day")
+  const cumulative = useCashflow(`${month}-01`, today, "day")
+  const previousCumulative = useCashflow(
+    `${previousMonth}-01`,
+    previousEnd,
+    "day"
+  )
   const recent = useTransactions({ page_size: 8 })
   const reviewCount = useNeedsReviewCount({
     initialData: initial?.reviewPage ?? undefined,
@@ -212,6 +223,27 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pengeluaran bulan ini vs bulan lalu</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cumulative.isError ? (
+            <ErrorNote error={cumulative.error} />
+          ) : previousCumulative.isError ? (
+            <ErrorNote error={previousCumulative.error} />
+          ) : cumulative.data && previousCumulative.data ? (
+            <CumulativeExpense
+              current={cumulative.data}
+              previous={previousCumulative.data}
+              previousMonth={previousMonth}
+            />
+          ) : (
+            <Skeleton className="aspect-[3/1] w-full max-w-2xl rounded-2xl" />
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Pengeluaran per kategori */}

@@ -4,6 +4,7 @@ import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react"
 import * as React from "react"
 
 import { CategoryBars } from "@/components/charts/category-bars"
+import { CategoryChange } from "@/components/charts/category-change"
 import { LazyCashflowChart } from "@/components/charts/lazy"
 import { ErrorNote, ListSkeleton, PageHeader } from "@/components/common"
 import { Money } from "@/components/money"
@@ -18,6 +19,7 @@ export default function ReportsPage() {
   const current = jakartaMonth()
   const [month, setMonth] = React.useState(current)
   const summary = useSummary(month)
+  const previousSummary = useSummary(addMonths(month, -1))
   const daily = useCashflow(`${month}-01`, monthEnd(month), "day")
   const trend = useCashflow(`${addMonths(month, -11)}-01`, monthEnd(month), "month")
 
@@ -79,6 +81,22 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             {trend.data ? <LazyCashflowChart data={trend.data} className="aspect-video w-full" /> : <Skeleton className="aspect-video w-full" />}
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Perubahan pengeluaran per kategori</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summary.isError ? (
+              <ErrorNote error={summary.error} />
+            ) : previousSummary.isError ? (
+              <ErrorNote error={previousSummary.error} />
+            ) : summary.data && previousSummary.data ? (
+              <CategoryChange current={summary.data} previous={previousSummary.data} />
+            ) : (
+              <ListSkeleton rows={5} />
+            )}
           </CardContent>
         </Card>
         {(["expense", "income"] as const).map((type) => (
