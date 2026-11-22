@@ -94,7 +94,7 @@ async def db_sessionmaker(migrated_db: str) -> AsyncIterator[async_sessionmaker[
     async with engine.begin() as conn:
         await conn.execute(
             text(
-                "TRUNCATE transactions, balance_snapshots, budgets, category_rules, categories, "
+                "TRUNCATE transactions, balance_snapshots, saving_goals, budgets, category_rules, categories, "
                 "accounts, raw_notifications RESTART IDENTITY CASCADE"
             )
         )

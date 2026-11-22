@@ -17,13 +17,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { ACCOUNT_TYPE_LABEL, formatDateTime, formatRupiah } from "@/lib/format"
-import { useAccountBalance, useAccounts, useReconcile, useSaveAccount } from "@/lib/queries"
-import type { Account, AccountType } from "@/lib/types"
+import { ACCOUNT_TYPE_LABEL, formatDateTime, formatRupiah, formatRupiahInput, parseRupiahInput } from "@/lib/format"
+import { useAccountBalance, useAccounts, useDeleteSavingGoal, useReconcile, useSaveAccount, useSaveSavingGoal, useSavingGoals } from "@/lib/queries"
+import type { Account, AccountType, SavingGoal } from "@/lib/types"
 
 export default function AccountsPage() {
   const { data, isLoading, isError, error } = useAccounts()
+  const goals = useSavingGoals()
   const [editing, setEditing] = React.useState<Account | "new" | null>(null)
+  const [editingGoal, setEditingGoal] = React.useState<Account | null>(null)
+  const editingGoalData = goals.data?.find((goal) => goal.account_id === editingGoal?.id)
 
   return (
     <>
@@ -36,6 +39,8 @@ export default function AccountsPage() {
           </Button>
         }
       />
+      {goals.isLoading && <p role="status" className="text-sm text-muted-foreground">Memuat target tabungan…</p>}
+      {goals.isError && <ErrorNote error={goals.error} />}
       {isLoading ? (
         <ListSkeleton />
       ) : isError ? (
@@ -51,17 +56,29 @@ export default function AccountsPage() {
         <ul className="grid gap-3 md:grid-cols-2">
           {data.map((a) => (
             <li key={a.id}>
-              <AccountCard account={a} onEdit={() => setEditing(a)} />
+              <AccountCard
+                account={a}
+                goal={goals.data?.find((goal) => goal.account_id === a.id)}
+                goalsReady={!goals.isLoading && !goals.isError}
+                onEdit={() => setEditing(a)}
+                onEditGoal={() => setEditingGoal(a)}
+              />
             </li>
           ))}
         </ul>
       )}
       <AccountDialog account={editing} onClose={() => setEditing(null)} />
+      <SavingGoalDialog
+        key={`${editingGoal?.id ?? "closed"}:${editingGoalData?.id ?? "new"}`}
+        account={editingGoal}
+        goal={editingGoalData}
+        onClose={() => setEditingGoal(null)}
+      />
     </>
   )
 }
 
-function AccountCard({ account, onEdit }: { account: Account; onEdit: () => void }) {
+function AccountCard({ account, goal, goalsReady, onEdit, onEditGoal }: { account: Account; goal?: SavingGoal; goalsReady: boolean; onEdit: () => void; onEditGoal: () => void }) {
   const status = useAccountBalance(account.id)
   const reconcile = useReconcile()
   const diff = status.data?.diff ?? 0
@@ -89,6 +106,17 @@ function AccountCard({ account, onEdit }: { account: Account; onEdit: () => void
         <Link href={`/transaksi?akun=${account.id}`} className="self-start">
           <Money value={account.balance} className="text-2xl font-semibold" />
         </Link>
+
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="self-start"
+          disabled={!goalsReady}
+          onClick={onEditGoal}
+        >
+          {goal ? "Ubah target tabungan" : "Atur target tabungan"}
+        </Button>
 
         {snap && diff === 0 && (
           <p className="text-xs text-muted-foreground">
@@ -122,6 +150,63 @@ function AccountCard({ account, onEdit }: { account: Account; onEdit: () => void
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function SavingGoalDialog({ account, goal, onClose }: { account: Account | null; goal?: SavingGoal; onClose: () => void }) {
+  const save = useSaveSavingGoal()
+  const remove = useDeleteSavingGoal()
+  const [name, setName] = React.useState(goal?.name ?? "")
+  const [amount, setAmount] = React.useState(goal ? formatRupiahInput(String(goal.target_amount)) : "")
+  const [targetDate, setTargetDate] = React.useState(goal?.target_date ?? "")
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const targetAmount = parseRupiahInput(amount)
+    if (!account) return
+    if (!name.trim() || name.trim().length > 100 || targetAmount === null) {
+      toast.error("Isi nama dan nominal target yang valid")
+      return
+    }
+    save.mutate(
+      { accountId: account.id, name: name.trim(), target_amount: targetAmount, target_date: targetDate || null },
+      { onSuccess: () => { toast.success("Target tabungan disimpan"); onClose() } }
+    )
+  }
+
+  return (
+    <Dialog open={account !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{goal ? "Ubah target tabungan" : "Atur target tabungan"}</DialogTitle>
+          <DialogDescription>Progres dihitung dari saldo terhitung akun {account?.name}. Tidak ada transaksi yang dibuat otomatis.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <Field>
+            <FieldLabel htmlFor="goal-name">Nama target</FieldLabel>
+            <Input id="goal-name" className="h-10" maxLength={100} value={name} onChange={(event) => setName(event.target.value)} required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="goal-amount">Nominal target (Rp)</FieldLabel>
+            <Input id="goal-amount" inputMode="numeric" className="money h-10" value={amount} onChange={(event) => setAmount(formatRupiahInput(event.target.value))} required />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="goal-date">Tanggal target (opsional)</FieldLabel>
+            <Input id="goal-date" type="date" className="h-10" value={targetDate} onChange={(event) => setTargetDate(event.target.value)} />
+          </Field>
+          <div className="flex justify-between gap-2">
+            {goal && (
+              <Button type="button" variant="ghost" disabled={remove.isPending} onClick={() => remove.mutate(account!.id, { onSuccess: () => { toast.success("Target tabungan dihapus"); onClose() } })}>
+                Hapus target
+              </Button>
+            )}
+            <Button type="submit" className="ml-auto" disabled={save.isPending}>
+              {save.isPending ? "Menyimpan…" : "Simpan target"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

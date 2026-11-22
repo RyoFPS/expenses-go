@@ -18,6 +18,18 @@ export interface Account {
   balance: number
 }
 
+export interface SavingGoal {
+  id: string
+  account_id: string
+  account_name: string
+  name: string
+  target_amount: number
+  target_date: string | null
+  balance: number
+  remaining: number
+  progress_percent: number
+}
+
 export interface AccountBalance {
   account_id: string
   calculated: number

@@ -18,6 +18,8 @@ EXPECTED_TABLES = {
     "transactions",
     "balance_snapshots",
     "category_rules",
+    "budgets",
+    "saving_goals",
 }
 
 EXPECTED_ENUMS = {

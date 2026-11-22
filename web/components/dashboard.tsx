@@ -36,6 +36,7 @@ import {
   useLatestNotification,
   useNeedsReviewCount,
   useNetWorth,
+  useSavingGoals,
   useSummary,
   useTransactions,
 } from "@/lib/queries"
@@ -54,6 +55,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
   const previousEnd = previousComparableEnd(today)
   const netWorth = useNetWorth({ initialData: initial?.netWorth ?? undefined })
   const accounts = useAccounts({ initialData: initial?.accounts ?? undefined })
+  const savingGoals = useSavingGoals()
   const summary = useSummary(month)
   const cashflow = useCashflow(addDays(today, -29), today, "day")
   const cumulative = useCashflow(`${month}-01`, today, "day")
@@ -177,6 +179,49 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
           </ul>
         )}
       </section>
+
+      {(savingGoals.isLoading || savingGoals.isError || (savingGoals.data?.length ?? 0) > 0) && (
+        <section aria-labelledby="saving-goals-heading" className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 id="saving-goals-heading" className="font-medium">Target tabungan</h2>
+            <Link prefetch={false} href="/akun" className="text-sm text-muted-foreground hover:text-foreground">Kelola</Link>
+          </div>
+          {savingGoals.isLoading ? (
+            <Skeleton className="h-24 w-full rounded-3xl" />
+          ) : savingGoals.isError ? (
+            <ErrorNote error={savingGoals.error} />
+          ) : (
+            <ul className="grid gap-3 md:grid-cols-2">
+              {savingGoals.data?.map((goal) => (
+              <li key={goal.id} className="rounded-3xl bg-card p-4 ring-1 ring-foreground/5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-medium">{goal.name}</h3>
+                    <p className="text-xs text-muted-foreground">{goal.account_name}{goal.target_date ? ` · Target ${goalDate(goal.target_date)}` : ""}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-medium">{Math.round(goal.progress_percent)}%</span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={`Progres target ${goal.name}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={goal.progress_percent}
+                  className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+                >
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${goal.progress_percent}%` }} />
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-xs sm:text-sm">
+                  <div><p className="text-muted-foreground">Saldo</p><Money value={goal.balance} className="font-medium" /></div>
+                  <div><p className="text-muted-foreground">Target</p><Money value={goal.target_amount} className="font-medium" /></div>
+                  <div><p className="text-muted-foreground">Sisa</p><Money value={goal.remaining} type={goal.remaining < 0 ? "income" : "neutral"} className="font-medium" /></div>
+                </div>
+              </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {/* Ringkasan bulan ini */}
       <section
@@ -330,4 +375,8 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
       </div>
     </div>
   )
+}
+
+function goalDate(date: string) {
+  return new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`))
 }
