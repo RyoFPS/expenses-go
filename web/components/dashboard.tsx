@@ -34,6 +34,7 @@ import {
   useAccounts,
   useCashflow,
   useLatestNotification,
+  useListenerStatus,
   useNeedsReviewCount,
   useNetWorth,
   useSavingGoals,
@@ -69,6 +70,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
     initialData: initial?.reviewPage ?? undefined,
   })
   const latestNotification = useLatestNotification()
+  const listenerStatuses = useListenerStatus()
   const { open } = useQuickAdd()
 
   const activeAccounts = (accounts.data ?? []).filter((a) => a.is_active)
@@ -103,6 +105,37 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
         </p>
         {latestNotification.isError && <ErrorNote error={latestNotification.error} />}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kesehatan listener Android</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {listenerStatuses.isLoading ? (
+            <Skeleton className="h-12 w-full" />
+          ) : listenerStatuses.isError ? (
+            <ErrorNote error={listenerStatuses.error} />
+          ) : listenerStatuses.data?.length ? (
+            listenerStatuses.data.map((device) => (
+              <div key={device.device_id} className="space-y-1">
+                <p className="font-medium">Android · {device.app_version}</p>
+                <p className={device.stale ? "text-expense" : "text-muted-foreground"}>
+                  Heartbeat terakhir: {formatDateTime(device.last_seen)} WIB
+                  {device.stale && " · Kedaluwarsa (>45 menit), bukan bukti transaksi terlewat."}
+                </p>
+                <p className={device.listener_enabled ? "text-muted-foreground" : "text-expense"}>
+                  Izin listener: {device.listener_enabled ? "Aktif" : "Mati"}
+                </p>
+                <p className={device.failed_count ? "text-expense" : "text-muted-foreground"}>
+                  Antrean: {device.pending_count} menunggu · {device.failed_count} gagal
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-muted-foreground">Belum ada heartbeat dari aplikasi Android.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {!!reviewCount.data && (
         <Link

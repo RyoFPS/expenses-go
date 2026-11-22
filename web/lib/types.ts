@@ -130,6 +130,16 @@ export interface LatestNotification {
   received_at: string | null
 }
 
+export interface ListenerStatus {
+  device_id: string
+  listener_enabled: boolean
+  pending_count: number
+  failed_count: number
+  app_version: string
+  last_seen: string
+  stale: boolean
+}
+
 export interface TransactionFilters {
   account_id?: string
   type?: TxType

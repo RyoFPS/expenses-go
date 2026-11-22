@@ -20,6 +20,7 @@ EXPECTED_TABLES = {
     "category_rules",
     "budgets",
     "saving_goals",
+    "listener_status",
 }
 
 EXPECTED_ENUMS = {

@@ -9,6 +9,8 @@ P = "/api/v1"
 PRD_ENDPOINTS = [
     ("post", f"{P}/ingest/notification"),
     ("post", f"{P}/ingest/notification/batch"),
+    ("post", f"{P}/ingest/listener-status/heartbeat"),
+    ("get", f"{P}/listener-status"),
     ("get", f"{P}/accounts"),
     ("post", f"{P}/accounts"),
     ("patch", f"{P}/accounts/{{account_id}}"),

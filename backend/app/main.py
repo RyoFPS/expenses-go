@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, FastAPI
 
-from app.api import accounts, budgets, categories, ingest, raw_notifications, reports, saving_goals, transactions
+from app.api import accounts, budgets, categories, ingest, listener_status, raw_notifications, reports, saving_goals, transactions
 from app.core.auth import require_user
 from app.core.config import get_settings
 
@@ -21,6 +21,8 @@ app = FastAPI(
 
 api_v1 = APIRouter(prefix="/api/v1")
 api_v1.include_router(ingest.router)
+api_v1.include_router(listener_status.ingest_router)
+api_v1.include_router(listener_status.router)
 
 dashboard = APIRouter(dependencies=[Depends(require_user)], responses={401: {"description": "Belum login"}})
 for r in (

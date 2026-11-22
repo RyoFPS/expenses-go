@@ -14,6 +14,7 @@ import type {
   CategoryRule,
   CategoryType,
   LatestNotification,
+  ListenerStatus,
   MonthlySummary,
   NetWorth,
   Page,
@@ -38,6 +39,7 @@ export const keys = {
   transaction: (id: string) => ["transactions", "detail", id] as const,
   reports: ["reports"] as const,
   latestNotification: ["reports", "latest-notification"] as const,
+  listenerStatus: ["listener-status"] as const,
   raw: (status?: ParseStatus) => (status ? (["raw", status] as const) : (["raw"] as const)),
 }
 
@@ -149,6 +151,13 @@ export const useLatestNotification = () =>
   useQuery({
     queryKey: keys.latestNotification,
     queryFn: () => api<LatestNotification>("/reports/latest-notification"),
+    refetchInterval: 30_000,
+  })
+
+export const useListenerStatus = () =>
+  useQuery({
+    queryKey: keys.listenerStatus,
+    queryFn: () => api<ListenerStatus[]>("/listener-status"),
     refetchInterval: 30_000,
   })
 

@@ -11,7 +11,10 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.core.app.NotificationManagerCompat
 import app.financetracker.listener.FinanceApp
+import app.financetracker.listener.data.OutboxStatus
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
@@ -19,8 +22,22 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val app = applicationContext as FinanceApp
         // Belum dikonfigurasi: item tetap PENDING dan terkirim setelah pengguna menyimpan pengaturan.
         val config = app.settings.serverConfig() ?: return Result.success()
-        val syncer = OutboxSyncer(app.database.outboxDao(), IngestClient(config))
-        return when (syncer.syncAll()) {
+        val client = IngestClient(config)
+        val syncResult = OutboxSyncer(app.database.outboxDao(), client).syncAll()
+        val counts = app.database.outboxDao().observeCounts().first()
+        val heartbeatResult = client.sendHeartbeat(
+            ListenerHeartbeat(
+                deviceId = app.settings.deviceId(),
+                listenerEnabled = NotificationManagerCompat.getEnabledListenerPackages(applicationContext)
+                    .contains(applicationContext.packageName),
+                pendingCount = counts.filter { it.status == OutboxStatus.PENDING }.sumOf { it.n },
+                failedCount = counts.filter { it.status == OutboxStatus.FAILED }.sumOf { it.n },
+                appVersion = applicationContext.packageManager
+                    .getPackageInfo(applicationContext.packageName, 0).versionName ?: "unknown",
+            ),
+        )
+        if (heartbeatResult == HeartbeatResult.RETRY) return Result.retry()
+        return when (syncResult) {
             SyncResult.DONE -> Result.success()
             SyncResult.RETRY_LATER -> Result.retry() // exponential backoff, tanpa batas percobaan
         }
