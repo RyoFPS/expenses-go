@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from app.models import RawNotification
+from app.models.enums import ParseStatus
 from tests.api_helpers import API, create_account, create_category, create_tx
 from tests.conftest import TEST_API_KEY
 
@@ -50,6 +52,46 @@ async def test_reparse_unknown_raw_is_404(client) -> None:
 
 
 # --- reports ------------------------------------------------------------------
+
+
+async def test_latest_notification_is_null_when_none_received(client) -> None:
+    response = await client.get(f"{API}/reports/latest-notification")
+
+    assert response.status_code == 200
+    assert response.json() == {"received_at": None}
+
+
+async def test_latest_notification_uses_latest_received_at(client, db_sessionmaker) -> None:
+    received_at = datetime(2026, 11, 22, 10, 0, tzinfo=UTC)
+    async with db_sessionmaker() as session:
+        session.add_all(
+            [
+                RawNotification(
+                    package_name=BCA_PKG,
+                    title="Catatan Finansial",
+                    text="lama",
+                    posted_at=received_at,
+                    received_at=datetime(2026, 11, 22, 9, 0, tzinfo=UTC),
+                    content_hash="latest-notification-old",
+                ),
+                RawNotification(
+                    package_name=BCA_PKG,
+                    title="Catatan Finansial",
+                    text="gagal diparse",
+                    posted_at=received_at,
+                    received_at=received_at,
+                    content_hash="latest-notification-new",
+                    parse_status=ParseStatus.failed,
+                ),
+            ]
+        )
+        await session.commit()
+
+    response = await client.get(f"{API}/reports/latest-notification")
+
+    assert response.status_code == 200
+    returned_at = datetime.fromisoformat(response.json()["received_at"].replace("Z", "+00:00"))
+    assert returned_at == received_at
 
 
 async def test_monthly_summary(client) -> None:
