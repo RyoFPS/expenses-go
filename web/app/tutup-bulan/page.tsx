@@ -20,6 +20,7 @@ import {
   jakartaMonth,
   monthEnd,
 } from "@/lib/format"
+import { monthCloseStatus } from "@/lib/month-close"
 import { useBudgets, useMonthClose, useSummary } from "@/lib/queries"
 
 export default function MonthClosePage() {
@@ -32,14 +33,7 @@ export default function MonthClosePage() {
   const to = monthEnd(month)
   const txLink = `/transaksi?dari=${from}&sampai=${to}&tanpa_kategori=1`
   const reviewLink = (tab: string) => `/review?bulan=${month}&tab=${tab}`
-  const pending =
-    close.data &&
-    close.data.needs_review +
-      close.data.failed_notifications +
-      close.data.uncategorized +
-      close.data.reconciliation.filter(
-        (account) => account.diff !== null && account.diff !== 0
-      ).length
+  const status = close.data && monthCloseStatus(close.data)
   const budgetTotal =
     budgets.data?.reduce((sum, budget) => sum + budget.amount, 0) ?? 0
   const budgetSpent =
@@ -138,7 +132,7 @@ export default function MonthClosePage() {
       ) : (
         close.data && (
           <>
-            {pending === 0 && (
+            {status === "ready" && (
               <div
                 role="status"
                 className="mb-4 flex items-center gap-2 rounded-2xl bg-income/10 p-4 text-sm font-medium"
@@ -146,6 +140,15 @@ export default function MonthClosePage() {
                 <CheckCircleIcon className="size-5" /> Bulan ini siap ditinjau.
                 Tidak ada pekerjaan tertunda.
               </div>
+            )}
+            {status === "unverified" && (
+              <p
+                role="status"
+                className="mb-4 rounded-2xl bg-muted p-4 text-sm"
+              >
+                Tidak ada pekerjaan pencatatan tertunda, tetapi rekonsiliasi
+                akun tanpa snapshot belum dapat diverifikasi.
+              </p>
             )}
             <div className="grid gap-3 sm:grid-cols-3">
               <ChecklistCard
