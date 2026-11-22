@@ -25,6 +25,7 @@ import {
   ACCOUNT_TYPE_LABEL,
   addDays,
   addMonths,
+  formatDateTime,
   formatMonth,
   jakartaDate,
   jakartaMonth,
@@ -32,6 +33,7 @@ import {
 import {
   useAccounts,
   useCashflow,
+  useLatestNotification,
   useNeedsReviewCount,
   useNetWorth,
   useSummary,
@@ -64,6 +66,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
   const reviewCount = useNeedsReviewCount({
     initialData: initial?.reviewPage ?? undefined,
   })
+  const latestNotification = useLatestNotification()
   const { open } = useQuickAdd()
 
   const activeAccounts = (accounts.data ?? []).filter((a) => a.is_active)
@@ -84,6 +87,20 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
           />
         )}
       </section>
+
+      <div className="text-sm text-muted-foreground" aria-live="polite">
+        <p>
+          <span className="font-medium text-foreground">Notifikasi terakhir diterima:</span>{" "}
+          {latestNotification.isLoading
+            ? "Memuat…"
+            : latestNotification.data?.received_at
+              ? `${formatDateTime(latestNotification.data.received_at)} WIB`
+              : latestNotification.isError
+                ? null
+                : "Belum ada notifikasi yang diterima."}
+        </p>
+        {latestNotification.isError && <ErrorNote error={latestNotification.error} />}
+      </div>
 
       {!!reviewCount.data && (
         <Link
