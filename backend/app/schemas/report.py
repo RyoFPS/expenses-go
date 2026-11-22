@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -48,3 +48,7 @@ class AccountWorth(BaseModel):
 class NetWorth(BaseModel):
     total: int
     accounts: list[AccountWorth]
+
+
+class LatestNotification(BaseModel):
+    received_at: datetime | None
