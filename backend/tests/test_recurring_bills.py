@@ -38,11 +38,11 @@ def test_five_days_and_twenty_percent_are_allowed() -> None:
     assert len(detect_recurring_bills([tx(1, 15), tx(2, 20, 120_000), tx(3, 15)])) == 1
 
 
-def test_stale_pattern_is_hidden_after_next_date(monkeypatch) -> None:
+def test_stale_pattern_is_hidden_after_seven_day_grace(monkeypatch) -> None:
     history = [tx(1, 15), tx(2, 15), tx(3, 15)]
-    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 4, 15))
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 4, 22))
     assert len(detect_recurring_bills(history)) == 1
-    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 4, 16))
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 4, 23))
     assert detect_recurring_bills(history) == []
 
 
@@ -85,5 +85,7 @@ async def test_decisions_persist_and_ignored_candidate_returns_after_new_transac
     assert confirmed["confirmed"][0]["estimated_amount"] == 100_000
     assert confirmed["confirmed"][0]["next_date"] == "2026-05-15"
     assert (await client.put(f"{url}/decision", json={**body, "merchant": "Other"})).status_code == 422
-    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 11, 22))
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 5, 16))
+    assert len((await client.get(url)).json()["confirmed"]) == 1
+    monkeypatch.setattr("app.services.recurring_bills.today_jakarta", lambda: date(2026, 5, 23))
     assert (await client.get(url)).json() == {"candidates": [], "confirmed": []}

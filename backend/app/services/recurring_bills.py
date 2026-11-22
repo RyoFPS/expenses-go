@@ -1,7 +1,7 @@
 import calendar
 import uuid
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from statistics import median
 
 from app.core.timeutil import JAKARTA, today_jakarta
@@ -44,7 +44,7 @@ def detect_recurring_bills(transactions: list[Transaction]) -> list[dict]:
         last_month = months[-1]
         year, month = (last_month[0] + 1, 1) if last_month[1] == 12 else (last_month[0], last_month[1] + 1)
         next_date = date(year, month, min(anchor, calendar.monthrange(year, month)[1]))
-        if next_date < today:
+        if next_date + timedelta(days=7) < today:
             continue
         bills.append({
             "account_id": account_id,

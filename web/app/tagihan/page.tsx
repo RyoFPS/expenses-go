@@ -7,7 +7,7 @@ import { EmptyState, ErrorNote, ListSkeleton, PageHeader } from "@/components/co
 import { Money } from "@/components/money"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { formatDate } from "@/lib/format"
+import { formatDate, jakartaDate } from "@/lib/format"
 import { useDecideRecurringBill, useRecurringBills } from "@/lib/queries"
 import type { RecurringBill } from "@/lib/types"
 
@@ -63,6 +63,7 @@ export default function RecurringBillsPage() {
 }
 
 function BillCard({ bill }: { bill: RecurringBill }) {
+  const overdue = bill.next_date < jakartaDate()
   return (
     <Card>
       <CardContent className="space-y-2">
@@ -71,7 +72,8 @@ function BillCard({ bill }: { bill: RecurringBill }) {
           <p className="text-sm text-muted-foreground">{bill.account_name}</p>
         </div>
         <p><Money value={bill.estimated_amount} /> <span className="text-sm text-muted-foreground">/ bulan (perkiraan)</span></p>
-        <p className="text-sm text-muted-foreground">Terakhir: {dateLabel(bill.last_date)} · Berikutnya: {dateLabel(bill.next_date)}</p>
+        <p className="text-sm text-muted-foreground">Terakhir: {dateLabel(bill.last_date)} · Perkiraan berikutnya: {dateLabel(bill.next_date)}</p>
+        {overdue && <p className="text-sm font-medium text-expense">Lewat perkiraan — cek apakah sudah dibayar.</p>}
       </CardContent>
     </Card>
   )
