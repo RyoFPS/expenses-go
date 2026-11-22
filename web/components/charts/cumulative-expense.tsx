@@ -37,9 +37,11 @@ export function CumulativeExpense({
 
   return (
     <figure className="flex flex-col gap-3">
+      <span className="text-xs text-muted-foreground">{formatCompact(max)}</span>
       <svg
-        viewBox={`0 0 ${width} ${height + 18}`}
-        className="h-auto w-full max-w-2xl"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        className="h-44 w-full overflow-visible md:h-52"
         role="img"
         aria-label={`Pengeluaran kumulatif: bulan ini ${formatRupiah(currentTotal)}, ${formatMonth(previousMonth)} ${formatRupiah(previousTotal)}`}
       >
@@ -50,10 +52,8 @@ export function CumulativeExpense({
           y2={height}
           className="stroke-border"
           strokeWidth={1}
+          vectorEffect="non-scaling-stroke"
         />
-        <text x={0} y={10} className="fill-muted-foreground text-[8px]">
-          {formatCompact(max)}
-        </text>
         <polyline
           points={line(previousTotals)}
           fill="none"
@@ -61,6 +61,7 @@ export function CumulativeExpense({
           strokeWidth={2}
           strokeDasharray="4 3"
           strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
         />
         <polyline
           points={line(currentTotals)}
@@ -68,23 +69,13 @@ export function CumulativeExpense({
           stroke="var(--expense)"
           strokeWidth={2.5}
           strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
         />
-        <text
-          x={0}
-          y={height + 13}
-          className="fill-muted-foreground text-[8px]"
-        >
-          1
-        </text>
-        <text
-          x={width}
-          y={height + 13}
-          textAnchor="end"
-          className="fill-muted-foreground text-[8px]"
-        >
-          {days}
-        </text>
       </svg>
+      <div className="flex justify-between text-xs text-muted-foreground" aria-hidden>
+        <span>1</span>
+        <span>{days}</span>
+      </div>
       <figcaption className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="h-0 w-4 border-t-2 border-expense" aria-hidden />{" "}

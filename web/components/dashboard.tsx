@@ -240,7 +240,7 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
               previousMonth={previousMonth}
             />
           ) : (
-            <Skeleton className="aspect-[3/1] w-full max-w-2xl rounded-2xl" />
+            <Skeleton className="h-44 w-full rounded-2xl md:h-52" />
           )}
         </CardContent>
       </Card>
