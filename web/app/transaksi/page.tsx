@@ -71,7 +71,15 @@ function Transactions() {
   const [dateFrom, setDateFrom] = useFilterState(params.get("dari") ?? "", resetPage)
   const [dateTo, setDateTo] = useFilterState(params.get("sampai") ?? "", resetPage)
   const [search, setSearch] = useFilterState("", resetPage)
-  const [showFilters, setShowFilters] = React.useState(Boolean(params.get("akun") || params.get("kategori")))
+  const [showFilters, setShowFilters] = React.useState(
+    Boolean(
+      params.get("akun") ||
+        params.get("kategori") ||
+        params.get("tipe") ||
+        params.get("dari") ||
+        params.get("sampai")
+    )
+  )
   const q = useDebounced(search.trim())
 
   const filters: TransactionFilters = {
