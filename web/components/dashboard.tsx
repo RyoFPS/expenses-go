@@ -180,14 +180,19 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
         )}
       </section>
 
-      {savingGoals.data && savingGoals.data.length > 0 && (
+      {(savingGoals.isLoading || savingGoals.isError || (savingGoals.data?.length ?? 0) > 0) && (
         <section aria-labelledby="saving-goals-heading" className="space-y-2">
           <div className="flex items-center justify-between">
             <h2 id="saving-goals-heading" className="font-medium">Target tabungan</h2>
             <Link prefetch={false} href="/akun" className="text-sm text-muted-foreground hover:text-foreground">Kelola</Link>
           </div>
-          <ul className="grid gap-3 md:grid-cols-2">
-            {savingGoals.data.map((goal) => (
+          {savingGoals.isLoading ? (
+            <Skeleton className="h-24 w-full rounded-3xl" />
+          ) : savingGoals.isError ? (
+            <ErrorNote error={savingGoals.error} />
+          ) : (
+            <ul className="grid gap-3 md:grid-cols-2">
+              {savingGoals.data?.map((goal) => (
               <li key={goal.id} className="rounded-3xl bg-card p-4 ring-1 ring-foreground/5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -212,8 +217,9 @@ export function Dashboard({ initial }: { initial?: DashboardInitial }) {
                   <div><p className="text-muted-foreground">Sisa</p><Money value={goal.remaining} type={goal.remaining < 0 ? "income" : "neutral"} className="font-medium" /></div>
                 </div>
               </li>
-            ))}
-          </ul>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 

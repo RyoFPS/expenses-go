@@ -39,6 +39,8 @@ export default function AccountsPage() {
           </Button>
         }
       />
+      {goals.isLoading && <p role="status" className="text-sm text-muted-foreground">Memuat target tabungan…</p>}
+      {goals.isError && <ErrorNote error={goals.error} />}
       {isLoading ? (
         <ListSkeleton />
       ) : isError ? (
@@ -57,6 +59,7 @@ export default function AccountsPage() {
               <AccountCard
                 account={a}
                 goal={goals.data?.find((goal) => goal.account_id === a.id)}
+                goalsReady={!goals.isLoading && !goals.isError}
                 onEdit={() => setEditing(a)}
                 onEditGoal={() => setEditingGoal(a)}
               />
@@ -75,7 +78,7 @@ export default function AccountsPage() {
   )
 }
 
-function AccountCard({ account, goal, onEdit, onEditGoal }: { account: Account; goal?: SavingGoal; onEdit: () => void; onEditGoal: () => void }) {
+function AccountCard({ account, goal, goalsReady, onEdit, onEditGoal }: { account: Account; goal?: SavingGoal; goalsReady: boolean; onEdit: () => void; onEditGoal: () => void }) {
   const status = useAccountBalance(account.id)
   const reconcile = useReconcile()
   const diff = status.data?.diff ?? 0
@@ -104,7 +107,14 @@ function AccountCard({ account, goal, onEdit, onEditGoal }: { account: Account; 
           <Money value={account.balance} className="text-2xl font-semibold" />
         </Link>
 
-        <Button type="button" size="sm" variant="outline" className="self-start" onClick={onEditGoal}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="self-start"
+          disabled={!goalsReady}
+          onClick={onEditGoal}
+        >
           {goal ? "Ubah target tabungan" : "Atur target tabungan"}
         </Button>
 
