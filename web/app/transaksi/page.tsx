@@ -1,6 +1,6 @@
 "use client"
 
-import { CaretLeftIcon, CaretRightIcon, FunnelSimpleIcon, MagnifyingGlassIcon, ReceiptIcon, TrashIcon } from "@phosphor-icons/react"
+import { CaretLeftIcon, CaretRightIcon, DownloadSimpleIcon, FunnelSimpleIcon, MagnifyingGlassIcon, ReceiptIcon, TrashIcon } from "@phosphor-icons/react"
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
@@ -26,9 +26,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { TX_TYPE_LABEL, formatDateTime } from "@/lib/format"
+import { TX_TYPE_LABEL, formatDateTime, jakartaDate } from "@/lib/format"
+import { api } from "@/lib/api"
 import { useDeleteTransaction, useTransactions, useUpdateTransaction } from "@/lib/queries"
-import type { Transaction, TransactionFilters, TxType } from "@/lib/types"
+import { transactionsCsv } from "@/lib/transaction-csv"
+import type { Page, Transaction, TransactionFilters, TxType } from "@/lib/types"
 
 const PAGE_SIZE = 50
 
@@ -87,6 +89,7 @@ function Transactions() {
   const lookups = useLookups()
   const [toDelete, setToDelete] = React.useState<Transaction | null>(null)
   const del = useDeleteTransaction()
+  const [exporting, setExporting] = React.useState(false)
 
   const activeFilterCount = [accountId, categoryId, type, dateFrom, dateTo].filter(Boolean).length
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1
@@ -100,11 +103,44 @@ function Transactions() {
     setSearch("")
   }
 
+  const exportCsv = async () => {
+    setExporting(true)
+    try {
+      const pageSize = 200
+      const first = await api<Page<Transaction>>("/transactions", { query: { ...filters, page: 1, page_size: pageSize } })
+      // shortcut: buffers all matches in browser memory; stream from the server if exports outgrow it.
+      const transactions = first.items
+      for (let page = 2; page <= Math.ceil(first.total / pageSize); page++) {
+        const next = await api<Page<Transaction>>("/transactions", { query: { ...filters, page, page_size: pageSize } })
+        transactions.push(...next.items)
+      }
+      const blob = new Blob(["\uFEFF", transactionsCsv(transactions, lookups.accountName, (id) => lookups.category(id)?.name ?? "")], {
+        type: "text/csv;charset=utf-8",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `transaksi-${jakartaDate()}.csv`
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal mengekspor transaksi.")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <>
       <PageHeader
         title="Transaksi"
         description={data ? `${data.total.toLocaleString("id-ID")} transaksi` : undefined}
+        actions={
+          <Button variant="outline" disabled={exporting || !data?.total} onClick={exportCsv}>
+            <DownloadSimpleIcon data-icon="inline-start" />
+            {exporting ? "Mengekspor…" : "Ekspor CSV"}
+          </Button>
+        }
       />
 
       <div className="mb-4 flex flex-col gap-3">
