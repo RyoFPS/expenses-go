@@ -114,6 +114,10 @@ export interface NetWorth {
   accounts: { id: string; name: string; type: AccountType; is_active: boolean; balance: number }[]
 }
 
+export interface LatestNotification {
+  received_at: string | null
+}
+
 export interface TransactionFilters {
   account_id?: string
   type?: TxType

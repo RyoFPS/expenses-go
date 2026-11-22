@@ -164,6 +164,7 @@ export default function ReportsPage() {
                 <LazyCategoryBars
                   items={summary.data.by_category}
                   type={type}
+                  month={month}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">Tidak ada data.</p>

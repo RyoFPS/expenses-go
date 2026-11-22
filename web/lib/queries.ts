@@ -13,6 +13,7 @@ import type {
   Category,
   CategoryRule,
   CategoryType,
+  LatestNotification,
   MonthlySummary,
   NetWorth,
   Page,
@@ -34,6 +35,7 @@ export const keys = {
   transactions: (f?: TransactionFilters) => (f ? (["transactions", f] as const) : (["transactions"] as const)),
   transaction: (id: string) => ["transactions", "detail", id] as const,
   reports: ["reports"] as const,
+  latestNotification: ["reports", "latest-notification"] as const,
   raw: (status?: ParseStatus) => (status ? (["raw", status] as const) : (["raw"] as const)),
 }
 
@@ -115,6 +117,13 @@ export const useCashflow = (dateFrom: string, dateTo: string, groupBy: "day" | "
 
 export const useNetWorth = (init: Initial<NetWorth> = {}) =>
   useQuery({ queryKey: [...keys.reports, "net-worth"], queryFn: () => api<NetWorth>("/reports/net-worth"), ...init })
+
+export const useLatestNotification = () =>
+  useQuery({
+    queryKey: keys.latestNotification,
+    queryFn: () => api<LatestNotification>("/reports/latest-notification"),
+    refetchInterval: 30_000,
+  })
 
 export const useRawNotifications = (status: ParseStatus) =>
   useQuery({
