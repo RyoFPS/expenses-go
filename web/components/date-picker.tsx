@@ -8,6 +8,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 import { jakartaDate } from "@/lib/format"
 
 export function DatePicker({
@@ -16,12 +17,14 @@ export function DatePicker({
   onChange,
   clearable = false,
   invalid,
+  className,
 }: {
   id: string
   value: string
   onChange: (value: string) => void
   clearable?: boolean
   invalid?: boolean
+  className?: string
 }) {
   const [open, setOpen] = React.useState(false)
   const [year, month, day] = value.split("-").map(Number)
@@ -37,7 +40,7 @@ export function DatePicker({
             type="button"
             variant="outline"
             aria-invalid={invalid}
-            className="h-10 w-full min-w-0 justify-start font-normal"
+            className={cn("h-10 w-full min-w-0 justify-start font-normal", className)}
           />
         }
       >

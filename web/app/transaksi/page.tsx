@@ -136,11 +136,11 @@ function Transactions() {
           <div id="tx-filters" className="grid grid-cols-2 gap-3 rounded-3xl bg-muted/50 p-4 md:grid-cols-5">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-from">Dari</Label>
-              <DatePicker id="f-from" value={dateFrom} onChange={setDateFrom} clearable />
+              <DatePicker id="f-from" value={dateFrom} onChange={setDateFrom} clearable className="h-8" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-to">Sampai</Label>
-              <DatePicker id="f-to" value={dateTo} onChange={setDateTo} clearable />
+              <DatePicker id="f-to" value={dateTo} onChange={setDateTo} clearable className="h-8" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="f-account">Akun</Label>
