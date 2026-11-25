@@ -9,6 +9,12 @@ _GOPAY_PAYMENT = re.compile(
     r"Mantaap,\s+kamu\s+barusan\s+bayar\s+(?P<amount>Rp\s*[\d.,]+)\s+ke\s+(?P<merchant>.+)\.",
     re.DOTALL,
 )
+_GOPAY_TOPUP = re.compile(r"Top\s+up\s+(?P<amount>Rp\s*[\d.,]+)\s+via\s+GoPay\s+udah\s+masuk\.")
+_GOPAY_SALDO_PAYMENT = re.compile(
+    r"Kamu\s+baru\s+aja\s+bayar\s+(?P<amount>Rp\s*[\d.,]+)\s+ke\s+"
+    r"(?P<merchant>.+?)\s+pake\s+GoPay\s+Saldo\.",
+    re.DOTALL,
+)
 _DANA_RECEIPT = re.compile(r"(?P<amount>Rp\s*[\d.,]+)\s+diterima\s+DANA\s+Bisnis\.")
 _JAGO_PAYMENT = re.compile(
     r"You\s+have\s+paid\s+(?P<amount>Rp\s*[\d.,]+)\s+to\s+(?P<merchant>.+?)\.\s+"
@@ -26,9 +32,20 @@ class GopayParser:
     package_names = {"com.gojek.gopay"}
 
     def parse(self, title: str, text: str) -> ParsedTransaction | None:
-        if title.strip() != "Pembayaran berhasil!":
+        title, body = title.strip(), text.strip()
+        # shortcut: only this top-up alert creates income; add event-level dedup if the other variant can arrive alone.
+        if title == "Top up berhasil":
+            match = _GOPAY_TOPUP.fullmatch(body)
+            if match is None:
+                raise ParseError("format top up GoPay belum dikenali")
+            amount = parse_amount(match.group("amount"))
+            return ParsedTransaction(
+                type="income", amount=amount.rupiah, confidence=0.95 if amount.exact else 0.5
+            )
+        if title not in ("Pembayaran berhasil!", "Pembayaran berhasil"):
             return None
-        match = _GOPAY_PAYMENT.fullmatch(text.strip())
+        pattern = _GOPAY_PAYMENT if title == "Pembayaran berhasil!" else _GOPAY_SALDO_PAYMENT
+        match = pattern.fullmatch(body)
         if match is None:
             raise ParseError("format pembayaran GoPay belum dikenali")
         amount = parse_amount(match.group("amount"))

@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import select
 
 from app.models import Account, RawNotification, Transaction
-from app.models.enums import AccountType, ParseStatus, TransactionType
+from app.models.enums import AccountType, ParseStatus, TransactionSource, TransactionType
 from app.parsers import ParseError, get_parser
 from app.parsers.wallets import DanaParser, GopayParser, JagoParser, OvoParser
 from app.services.processing import reparse, reparse_all
@@ -23,6 +23,11 @@ JAGO_SAMPLES = json.loads(
 )
 OVO_SAMPLES = json.loads(
     (Path(__file__).parent / "fixtures" / "wallets" / "ovo_qris_self_transfer.json").read_text(
+        encoding="utf-8"
+    )
+)
+GOPAY_VA = json.loads(
+    (Path(__file__).parent / "fixtures" / "wallets" / "gopay_bca_va_20261124.json").read_text(
         encoding="utf-8"
     )
 )
@@ -148,3 +153,68 @@ async def test_ovo_reparse_preserves_unrelated_dana_income(db_sessionmaker) -> N
         )
         assert transfer.raw_notification_id == raw_ids["ovo"]
         assert transfer.counter_raw_notification_id == raw_ids["dana"]
+
+
+def test_observed_gopay_va_topup_and_saldo_payment() -> None:
+    parser = get_parser("com.gojek.gopay")
+    topup = parser.parse(GOPAY_VA["topup"]["title"], GOPAY_VA["topup"]["text"])
+    payment = parser.parse(GOPAY_VA["payment"]["title"], GOPAY_VA["payment"]["text"])
+    assert (topup.type, topup.amount, topup.merchant) == ("income", 300000, None)
+    assert (payment.type, payment.amount, payment.merchant) == ("expense", 298590, "XL HOME")
+    for key in ("duplicate_topup", "va_reminder"):
+        assert parser.parse(GOPAY_VA[key]["title"], GOPAY_VA[key]["text"]) is None
+    with pytest.raises(ParseError):
+        parser.parse("Top up berhasil", "Format top up yang belum dikenal")
+
+
+async def test_gopay_va_topup_pairs_with_bca_expense(db_sessionmaker) -> None:
+    async with db_sessionmaker() as session:
+        bca = Account(name="BCA", type=AccountType.bank, package_name="com.bca.mybca.omni.android")
+        gopay = Account(name="Gopay", type=AccountType.ewallet, package_name="com.gojek.gopay")
+        session.add_all([bca, gopay])
+        at = datetime(2026, 11, 24, 15, 55, 40, tzinfo=UTC)
+        for key, occurred_at in (("topup", at), ("bca_out", at + timedelta(milliseconds=279))):
+            session.add(RawNotification(**GOPAY_VA[key], posted_at=occurred_at, content_hash=key))
+        await session.commit()
+        raw_ids = {raw.content_hash: raw.id for raw in (await session.scalars(select(RawNotification))).all()}
+        assert await reparse(session, raw_ids["topup"]) == ParseStatus.parsed
+        assert await reparse(session, raw_ids["bca_out"]) == ParseStatus.parsed
+
+    async with db_sessionmaker() as session:
+        [tx] = (await session.scalars(select(Transaction))).all()
+        assert (tx.type, tx.amount, tx.account_id, tx.to_account_id) == (
+            TransactionType.transfer, 300000, bca.id, gopay.id
+        )
+        assert tx.raw_notification_id == raw_ids["bca_out"]
+        assert tx.counter_raw_notification_id == raw_ids["topup"]
+
+
+async def test_linked_manual_gopay_payment_survives_reparse(db_sessionmaker) -> None:
+    async with db_sessionmaker() as session:
+        gopay = Account(name="Gopay", type=AccountType.ewallet, package_name="com.gojek.gopay")
+        raw = RawNotification(
+            **GOPAY_VA["payment"],
+            posted_at=datetime(2026, 11, 24, 15, 57, 39, tzinfo=UTC),
+            content_hash="payment",
+            parse_status=ParseStatus.ignored,
+        )
+        session.add_all([gopay, raw])
+        await session.flush()
+        manual = Transaction(
+            account_id=gopay.id,
+            type=TransactionType.expense,
+            amount=298590,
+            occurred_at=datetime(2026, 11, 24, 15, 59, tzinfo=UTC),
+            source=TransactionSource.manual,
+            note="Wifi Bulan November",
+            raw_notification_id=raw.id,
+        )
+        session.add(manual)
+        await session.commit()
+        assert await reparse(session, raw.id) == ParseStatus.parsed
+
+    async with db_sessionmaker() as session:
+        [tx] = (await session.scalars(select(Transaction))).all()
+        assert (tx.id, tx.source, tx.note, tx.amount, tx.raw_notification_id) == (
+            manual.id, TransactionSource.manual, "Wifi Bulan November", 298590, raw.id
+        )

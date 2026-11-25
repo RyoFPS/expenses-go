@@ -1,0 +1,28 @@
+{
+  "provenance": "Raw notifications from the user's phone on 2026-11-24; the VA suffix in the reminder is masked.",
+  "topup": {
+    "package_name": "com.gojek.gopay",
+    "title": "Top up berhasil",
+    "text": "Top up Rp300.000 via GoPay udah masuk."
+  },
+  "duplicate_topup": {
+    "package_name": "com.gojek.gopay",
+    "title": "Top up berhasil 💰",
+    "text": "Kamu baru aja top up Rp300.000 ke GoPay kamu via BCA Virtual Account."
+  },
+  "va_reminder": {
+    "package_name": "com.gojek.gopay",
+    "title": "Selesaikan VA transfer sekarang, ya 🔔",
+    "text": "Transfer Rp300.000 ke BCA Virtual Account sebelum 25 Nov 2026, 22:54 untuk kami kirim ke GoPay kamu ***xxxx."
+  },
+  "bca_out": {
+    "package_name": "com.bca.mybca.omni.android",
+    "title": "Catatan Finansial",
+    "text": "Pengeluaran sebesar IDR 300,000.00 di kategori Pembayaran."
+  },
+  "payment": {
+    "package_name": "com.gojek.gopay",
+    "title": "Pembayaran berhasil",
+    "text": "Kamu baru aja bayar Rp298.590 ke XL HOME pake GoPay Saldo."
+  }
+}
